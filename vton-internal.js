@@ -191,7 +191,9 @@ async function submitVTONJob(modelImageUrl, garmentImageUrl, modelDescription, g
     });
 
     if (!response.ok) {
-        throw new Error(`FAL AI submission failed: ${response.status} `);
+        const errorText = await response.text();
+        console.error('FAL AI Error Response:', errorText);
+        throw new Error(`FAL AI submission failed: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
