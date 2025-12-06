@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Virtual Try-On Manager v3.0 (Async)</title>
+    <style>
+        /* --- CSS RESET & VARIABLES --- */
+        :root {
+            --bg-app: #f5f5f7;
+            --bg-card: #ffffff;
+            --text-main: #1d1d1f;
+            --text-sub: #86868b;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --border: #d2d2d7;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --warning: #ff9f0a;
+            --radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        
+        body {
+            font-family: var(--font-stack);
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        h1, h2, h3 { font-weight: 600; letter-spacing: -0.5px; margin-bottom: 10px; }
+        p { font-size: 14px; color: var(--text-sub); line-height: 1.4; }
+
+        /* --- LAYOUT --- */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header { text-align: center; margin-bottom: 20px; }
+
+        .grid-2-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* --- CARDS & SECTIONS --- */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .product-title-display {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-top: -5px;
+            margin-bottom: 15px;
+            display: block;
+            min-height: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus { border-color: var(--accent); }
+
+        button {
+            padding: 10px 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+            font-size: 14px;
+        }
+        button:hover { background: var(--accent-hover); }
+        button:disabled { background: var(--border); cursor: not-allowed; }
+        button.danger { background: var(--danger); }
+        button.secondary { background: transparent; color: var(--text-main); border: 1px solid var(--border); }
+        button.secondary:hover { background: #f0f0f0; }
+
+        /* --- IMAGE GRIDS --- */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .img-item {
+            position: relative;
+            aspect-ratio: 2/3;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .img-item img { width: 100%; height: 100%; object-fit: cover; }
+        .img-item.selected { border-color: var(--accent); transform: scale(0.95); }
+        .img-item:hover { filter: brightness(0.95); }
+
+        /* --- MATCH SECTION --- */
+        .match-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .control-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 200px; }
+        
+        select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 14px;
+            background: white;
+            width: 100%;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 10px;
+            cursor: pointer;
+        }
+        .checkbox-group input { width: 16px; height: 16px; cursor: pointer; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { text-align: left; color: var(--text-sub); padding: 10px; border-bottom: 1px solid var(--border); font-weight: 500; }
+        td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .thumb-mini { width: 40px; height: 60px; object-fit: cover; border-radius: 4px; vertical-align: middle; margin-right: 10px; }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-pending { background: #eee; color: #666; }
+        .status-queued { background: #e3f2fd; color: #0d47a1; }
+        .status-processing { background: #fff3e0; color: #e65100; }
+        .status-done { background: #e8f5e9; color: #1b5e20; }
+        .status-error { background: #ffebee; color: #c62828; }
+        .tag-ghost { background: #333; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px; }
+
+        /* --- RESULTS --- */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+        .result-img {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            border-bottom: 1px solid #eee;
+        }
+        .result-actions { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .result-meta { font-size: 12px; color: var(--text-sub); margin-bottom: 5px; }
+
+        .replace-mode-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin: 10px 0;
+            background: #f5f5f7;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        .replace-mode-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* --- TOAST NOTIFICATIONS --- */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .toast {
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease-out;
+            max-width: 300px;
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* --- LOADING SPINNER --- */
+        .spinner {
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>AI Virtual Try-On Manager</h1>
+        <p>Map models to garments, process with AI, and sync back to Shopify.</p>
+    </div>
+
+    <div class="grid-2-col">
+        <div class="card">
+            <h2>Store A <span style="font-weight:400; color:var(--text-sub); font-size:0.8em">(Models)</span></h2>
+            <div class="input-group">
+                <input type="text" id="input-url-a" placeholder="Paste Store A Product URL">
+                <button onclick="app.fetchImages('A')">Fetch</button>
+            </div>
+            <div id="grid-a" class="image-grid">
+                <p style="grid-column:1/-1; text-align:center; padding:20px;">No images loaded.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Store B <span style="font-weight:400; color:var(--text-sub); font-size:0.8em">(Garments/Target)</span></h2>
+            <span id="store-b-title" class="product-title-display"></span>
+            <div class="input-group">
+                <input type="text" id="input-url-b" placeholder="Paste Store B Product URL">
+                <button onclick="app.fetchImages('B')">Fetch</button>
+            </div>
+            <div id="grid-b" class="image-grid">
+                <p style="grid-column:1/-1; text-align:center; padding:20px;">No images loaded.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Match Pairs</h2>
+        <p style="margin-bottom:15px;">Configure your try-on pairs and settings.</p>
+        
+        <div class="match-controls">
+            <div class="control-group">
+                <label>Selected Model (A)</label>
+                <select id="select-model-a"><option value="">-- Select from Grid A --</option></select>
+            </div>
+            
+            <div class="control-group">
+                <label>Selected Garment (B)</label>
+                <select id="select-garment-b"><option value="">-- Select from Grid B --</option></select>
+            </div>
+
+            <div class="control-group" style="max-width: 150px;">
+                <label>Garment Category</label>
+                <select id="select-garment-type">
+                    <option value="DRESS">Dress</option>
+                    <option value="TOPS">Tops (Upper Body)</option>
+                    <option value="BOTTOMS">Bottoms (Pants/Skirt)</option>
+                    <option value="OUTERWEAR">Outerwear/Jacket</option>
+                    <option value="FULL_BODY">Full Body Set</option>
+                </select>
+            </div>
+
+            <div class="control-group" style="max-width: 120px; justify-content: flex-end;">
+                <label class="checkbox-group" title="Generates a ghost mannequin effect instead of trying on a model">
+                    <input type="checkbox" id="check-ghost-mode">
+                    <span>👻 Ghost Mode</span>
+                </label>
+            </div>
+
+            <button class="secondary" onclick="app.addPair()">+ Add Pair</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Model (A)</th>
+                    <th>Garment (B)</th>
+                    <th>Type / Mode</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="match-table-body">
+                <tr><td colspan="6" style="text-align:center; color:#999;">No pairs added yet.</td></tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; text-align: right;">
+            <button id="btn-run-ai" onclick="app.runBatch()" disabled>Run AI Batch (Max 20)</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>AI Results & Replace</h2>
+        <div id="results-container" class="results-grid">
+            <p style="grid-column:1/-1; text-align:center; padding:30px; color:#999;">Processed results will appear here.</p>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+/**
+ * CONFIGURATION
+ * Lütfen "vton-submit" ve "vton-status" için oluşturduğunuz YENİ webhook URL'lerini girin.
+ */
+const CONFIG = {
+    // --- ASYNC VTON ENDPOINTS ---
+    N8N_SUBMIT_URL: "https://dtt1z7t3.rcsrv.com/webhook/vton-submit", // İşi başlatan webhook
+    N8N_STATUS_URL: "https://dtt1z7t3.rcsrv.com/webhook/vton-status", // Durumu soran webhook
+    
+    // --- DİĞER ENDPOINTLER ---
+    // Ghost Mode için de aynı async mantığı kurmadıysanız eski URL kalabilir,
+    // veya onu da async yaptıysanız güncelleyin.
+    N8N_GHOST_URL: "https://dtt1z7t3.rcsrv.com/webhook/ghost-vton",    
+    N8N_REPLACE_URL: "https://dtt1z7t3.rcsrv.com/webhook/replace-image",
+    
+    // --- AYARLAR ---
+    CONCURRENCY_LIMIT: 20, // İsteğiniz üzerine 20 yapıldı
+};
+
+/**
+ * STATE MANAGEMENT
+ */
+const state = {
+    storeA: { url: '', images: [], productId: null, handle: null, domain: null, title: '' },
+    storeB: { url: '', images: [], productId: null, handle: null, domain: null, title: '' },
+    pairs: [], 
+    results: [],
+    isProcessing: false
+};
+
+class RequestQueue {
+    constructor(concurrency) {
+        this.concurrency = concurrency;
+        this.activeCount = 0;
+        this.queue = [];
+    }
+    add(task) { this.queue.push(task); this.next(); }
+    async next() {
+        if (this.activeCount >= this.concurrency || this.queue.length === 0) return;
+        this.activeCount++;
+        const task = this.queue.shift();
+        try { await task(); } catch (err) { console.error("Task failed", err); } finally { this.activeCount--; this.next(); }
+    }
+}
+const queue = new RequestQueue(CONFIG.CONCURRENCY_LIMIT);
+
+/**
+ * MAIN LOGIC
+ */
+const app = {
+    init: () => { app.loadState(); app.renderAll(); },
+
+    parseShopifyUrl: (urlStr) => {
+        try {
+            if (!urlStr.startsWith('http')) urlStr = 'https://' + urlStr;
+            const url = new URL(urlStr);
+            const pathParts = url.pathname.split('/');
+            const productsIndex = pathParts.indexOf('products');
+            if (productsIndex === -1 || productsIndex + 1 >= pathParts.length) return null;
+            return { domain: url.hostname, handle: pathParts[productsIndex + 1] };
+        } catch (e) { return null; }
+    },
+
+    fetchImages: async (storeType) => {
+        const inputId = storeType === 'A' ? 'input-url-a' : 'input-url-b';
+        const rawUrl = document.getElementById(inputId).value.trim();
+        
+        if (!rawUrl) return ui.toast('Please enter a URL.', 'error');
+        const parsed = app.parseShopifyUrl(rawUrl);
+        if (!parsed) return ui.toast('Invalid Shopify Product URL.', 'error');
+
+        const btn = document.querySelector(`#${inputId}`).nextElementSibling;
+        ui.setLoading(btn, true);
+
+        try {
+            const apiUrl = `https://${parsed.domain}/products/${parsed.handle}.json`;
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`Shopify API Error: ${response.status}`);
+            
+            const data = await response.json();
+            const product = data.product;
+            if (!product) throw new Error('Product not found');
+
+            const storeData = {
+                url: rawUrl,
+                productId: product.id,
+                title: product.title,
+                handle: parsed.handle,
+                domain: parsed.domain,
+                images: product.images.map(img => ({
+                    id: img.id,
+                    position: img.position,
+                    src: img.src, 
+                    displaySrc: app.resizeImage(img.src, 400)
+                }))
+            };
+
+            if (storeType === 'A') state.storeA = storeData;
+            else state.storeB = storeData;
+
+            app.saveState();
+            app.renderGrid(storeType);
+            app.renderStoreTitle(storeType);
+            app.updateDropdowns();
+            ui.toast(`Fetched ${product.images.length} images from Store ${storeType}`, 'success');
+
+        } catch (err) {
+            ui.toast(err.message, 'error');
+        } finally {
+            ui.setLoading(btn, false);
+        }
+    },
+
+    resizeImage: (url, width) => {
+        try {
+            if(url.includes('?')) return url + `&width=${width}`;
+            return url + `?width=${width}`;
+        } catch(e) { return url; }
+    },
+
+    addPair: () => {
+        const selA = document.getElementById('select-model-a');
+        const selB = document.getElementById('select-garment-b');
+        const selType = document.getElementById('select-garment-type');
+        const checkGhost = document.getElementById('check-ghost-mode');
+
+        const valA = selA.value;
+        const valB = selB.value;
+        const valType = selType.value;
+        const isGhost = checkGhost.checked;
+
+        if (!valB) return ui.toast('You must select a Garment (Store B).', 'error');
+        if (!valA && !isGhost) return ui.toast('You must select a Model (Store A) for standard mode.', 'error');
+        
+        const pairId = Date.now().toString();
+        state.pairs.push({
+            id: pairId,
+            modelUrl: valA || "GHOST_MODE_NO_MODEL",
+            garmentUrl: valB,
+            garmentType: valType,
+            isGhostMode: isGhost,
+            status: 'pending',
+            resultUrl: null,
+            requestId: null
+        });
+
+        app.saveState();
+        app.renderMatchTable();
+        
+        selA.value = ""; selB.value = ""; checkGhost.checked = false;
+    },
+
+    removePair: (id) => {
+        state.pairs = state.pairs.filter(p => p.id !== id);
+        app.saveState();
+        app.renderMatchTable();
+    },
+
+    runBatch: () => {
+        const pendingPairs = state.pairs.filter(p => p.status === 'pending' || p.status === 'error');
+        if (pendingPairs.length === 0) return ui.toast('No pending pairs to process.', 'error');
+
+        state.isProcessing = true;
+        ui.updateRunButton();
+
+        pendingPairs.forEach(pair => {
+            const idx = state.pairs.findIndex(p => p.id === pair.id);
+            state.pairs[idx].status = 'queued';
+            app.renderMatchRowStatus(pair.id, 'queued');
+
+            queue.add(async () => {
+                await app.processSinglePair(pair.id);
+            });
+        });
+    },
+
+    // --- YENİ: POLLING FONKSİYONU ---
+    pollStatus: async (requestId) => {
+        // Her 5 saniyede bir sor, toplam 180 kere dene (15 dakika)
+        const maxAttempts = 180; 
+        let attempts = 0;
+
+        return new Promise((resolve, reject) => {
+            const interval = setInterval(async () => {
+                attempts++;
+                try {
+                    // console.log(`Polling attempt ${attempts} for ${requestId}`);
+                    const response = await fetch(CONFIG.N8N_STATUS_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: requestId })
+                    });
+                    
+                    if (!response.ok) throw new Error("Status check failed");
+                    
+                    const data = await response.json();
+                    
+                    // COMPLETED -> Başarılı, URL döndür
+                    if (data.status === 'COMPLETED') {
+                        clearInterval(interval);
+                        resolve(data.output_image);
+                    } 
+                    // FAILED / ERROR -> Hata fırlat
+                    else if (data.status === 'FAILED' || data.status === 'ERROR') {
+                        clearInterval(interval);
+                        reject(new Error("AI Generation Failed on Server"));
+                    } 
+                    // Diğer durumlar (IN_QUEUE, IN_PROGRESS) -> Beklemeye devam
+                    else {
+                        if (attempts >= maxAttempts) {
+                            clearInterval(interval);
+                            reject(new Error("Timeout: Operation took too long"));
+                        }
+                    }
+                } catch (e) {
+                    clearInterval(interval);
+                    reject(e);
+                }
+            }, 5000); // 5 saniye bekle
+        });
+    },
+
+    // --- YENİ: ASYNC PROCESS LOGIC ---
+    processSinglePair: async (pairId) => {
+        const idx = state.pairs.findIndex(p => p.id === pairId);
+        if (idx === -1) return;
+        const pair = state.pairs[idx];
+
+        state.pairs[idx].status = 'processing';
+        app.renderMatchRowStatus(pairId, 'processing');
+
+        try {
+            // 1. GHOST MODE KONTROLÜ
+            if (pair.isGhostMode) {
+                // Ghost Mode için hala senkron (tek seferlik) yapı kullanıyorsanız burası ayrı kalabilir.
+                // Eğer Ghost Mode'u da async yaptıysanız burayı da ona göre güncellemelisiniz.
+                // Mevcut yapıda Ghost Mode için tek URL tanımlı, o yüzden onu eski yöntemle çağırıyoruz.
+                const payload = {
+                    pairs: [{
+                        model_image_url: pair.modelUrl,
+                        garment_image_url: pair.garmentUrl,
+                        garment_category: pair.garmentType,
+                        product_title: state.storeB.title || "Fashion Product",
+                        is_ghost_mode: true
+                    }]
+                };
+
+                const response = await fetch(CONFIG.N8N_GHOST_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error('Ghost API Error');
+                const data = await response.json();
+                
+                if (!data.results || !data.results[0].output_image) throw new Error('No result');
+                
+                const res = data.results[0];
+                state.pairs[idx].status = 'done';
+                state.pairs[idx].resultUrl = res.output_image;
+                state.pairs[idx].requestId = res.request_id || Date.now();
+                app.renderMatchRowStatus(pairId, 'done');
+                app.renderResults();
+                app.saveState();
+                return;
+            }
+
+            // 2. STANDART VTON (ASYNC)
+            const payload = {
+                pairs: [{
+                    model_image_url: pair.modelUrl,
+                    garment_image_url: pair.garmentUrl,
+                    garment_category: pair.garmentType,
+                    product_title: state.storeB.title || "Fashion Product",
+                    is_ghost_mode: false
+                }]
+            };
+
+            // A) İşi Başlat (Submit)
+            const submitResponse = await fetch(CONFIG.N8N_SUBMIT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!submitResponse.ok) throw new Error('Submission Failed');
+            const submitData = await submitResponse.json();
+            
+            // n8n'den dönen yapıya göre request_id'yi al
+            // Önceki workflow örneğinde: { request_id: "...", status: "queued" } dönüyor
+            const requestId = submitData.request_id || submitData[0]?.request_id || submitData.results?.[0]?.request_id;
+            
+            if (!requestId) throw new Error("No request ID returned from submit");
+
+            // B) Durumu Sorgula (Poll)
+            app.renderMatchRowStatus(pairId, 'processing (queue)');
+            const finalImageUrl = await app.pollStatus(requestId);
+
+            // C) Sonucu Kaydet
+            state.pairs[idx].status = 'done';
+            state.pairs[idx].resultUrl = finalImageUrl;
+            state.pairs[idx].requestId = requestId;
+            
+            app.renderMatchRowStatus(pairId, 'done');
+            app.renderResults();
+            app.saveState();
+
+        } catch (err) {
+            console.error(err);
+            state.pairs[idx].status = 'error';
+            app.renderMatchRowStatus(pairId, 'error');
+            ui.toast(`Pair failed: ${err.message}`, 'error');
+        }
+    },
+
+    // --- REPLACE LOGIC (FIXED) ---
+    executeReplace: async (pairId, selectId, btnElement) => {
+        const select = document.getElementById(selectId);
+        const selectedPosition = select.value; 
+        const modeInput = document.querySelector(`input[name="replace-mode-${pairId}"]:checked`);
+        const mode = modeInput ? modeInput.value : 'insert'; 
+
+        if (!selectedPosition) return ui.toast('Please select a position.', 'error');
+        if (!state.storeB.productId) return ui.toast('Store B Product ID missing.', 'error');
+
+        const pair = state.pairs.find(p => p.id === pairId);
+        const existingImg = state.storeB.images.find(img => img.position === parseInt(selectedPosition));
+        
+        let oldImageId = null;
+        if (mode === 'replace' && existingImg) {
+            oldImageId = existingImg.id;
+        }
+
+        console.log("Replacing Logic:", { mode, position: selectedPosition, oldImageId });
+
+        ui.setLoading(btnElement, true);
+
+        try {
+            const payload = {
+                store: "B",
+                product_id: state.storeB.productId,
+                target_position: parseInt(selectedPosition),
+                old_image_id: oldImageId, 
+                new_image_url: pair.resultUrl
+            };
+
+            const response = await fetch(CONFIG.N8N_REPLACE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error('Replace Failed');
+            
+            const actionText = oldImageId ? "Deleted old & Uploaded new" : "Just Uploaded new";
+            ui.toast(`${actionText} at position ${selectedPosition}!`, 'success');
+            
+        } catch (err) {
+            ui.toast('Replace failed: ' + err.message, 'error');
+        } finally {
+            ui.setLoading(btnElement, false);
+        }
+    },
+
+    saveState: () => { localStorage.setItem('vton_state', JSON.stringify(state)); },
+    loadState: () => {
+        const saved = localStorage.getItem('vton_state');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            Object.assign(state, parsed);
+            document.getElementById('input-url-a').value = state.storeA.url || '';
+            document.getElementById('input-url-b').value = state.storeB.url || '';
+        }
+    },
+    renderAll: () => {
+        app.renderGrid('A'); app.renderGrid('B'); app.renderStoreTitle('B');
+        app.updateDropdowns(); app.renderMatchTable(); app.renderResults();
+    },
+    renderStoreTitle: (type) => { if (type === 'B' && state.storeB.title) document.getElementById('store-b-title').innerText = state.storeB.title; },
+    renderGrid: (type) => {
+        const data = type === 'A' ? state.storeA : state.storeB;
+        const grid = document.getElementById(`grid-${type.toLowerCase()}`);
+        grid.innerHTML = '';
+        if (data.images.length === 0) { grid.innerHTML = '<p style="grid-column:1/-1; text-align:center; padding:20px;">No images loaded.</p>'; return; }
+        data.images.forEach(img => {
+            const div = document.createElement('div');
+            div.className = 'img-item';
+            div.onclick = () => div.classList.toggle('selected');
+            const posBadge = type === 'B' ? `<span style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.6); color:white; font-size:10px; padding:2px 4px; border-radius:4px;">#${img.position}</span>` : '';
+            div.innerHTML = `${posBadge}<img src="${img.displaySrc}" loading="lazy">`;
+            grid.appendChild(div);
+        });
+    },
+    updateDropdowns: () => {
+        const populate = (selectId, images) => {
+            const sel = document.getElementById(selectId);
+            sel.innerHTML = `<option value="">-- Select Image --</option>`;
+            images.forEach((img, idx) => { sel.innerHTML += `<option value="${img.src}">Img #${idx+1} (Pos: ${img.position || '?'})</option>`; });
+        };
+        populate('select-model-a', state.storeA.images);
+        populate('select-garment-b', state.storeB.images);
+    },
+    renderMatchTable: () => {
+        const tbody = document.getElementById('match-table-body');
+        tbody.innerHTML = '';
+        if (state.pairs.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999;">No pairs added yet.</td></tr>'; ui.updateRunButton(); return; }
+        state.pairs.forEach(pair => {
+            const tr = document.createElement('tr');
+            tr.id = `row-${pair.id}`;
+            const ghostBadge = pair.isGhostMode ? '<span class="tag-ghost">GHOST</span>' : '';
+            tr.innerHTML = `
+                <td style="color:#999; font-size:12px;">${pair.id.slice(-6)}</td>
+                <td><img src="${pair.modelUrl}" class="thumb-mini" onerror="this.style.display='none'"></td>
+                <td><img src="${pair.garmentUrl}" class="thumb-mini"></td>
+                <td style="font-size:12px;">${pair.garmentType} ${ghostBadge}</td>
+                <td id="status-${pair.id}"><span class="status-badge status-${pair.status}">${pair.status}</span></td>
+                <td><button class="secondary" onclick="app.removePair('${pair.id}')" style="padding:5px 10px; font-size:12px;">Remove</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        ui.updateRunButton();
+    },
+    renderMatchRowStatus: (id, status) => { const cell = document.getElementById(`status-${id}`); if (cell) cell.innerHTML = `<span class="status-badge status-${status}">${status}</span>`; },
+
+    renderResults: () => {
+        const container = document.getElementById('results-container');
+        const donePairs = state.pairs.filter(p => p.status === 'done' && p.resultUrl);
+        container.innerHTML = '';
+        if (donePairs.length === 0) { container.innerHTML = '<p style="grid-column:1/-1; text-align:center; padding:30px; color:#999;">Processed results will appear here.</p>'; return; }
+
+        let optionsHtml = '<option value="">Select Target Position...</option>';
+        for (let i = 1; i <= 10; i++) {
+            const existing = state.storeB.images.find(img => img.position === i);
+            if (existing) {
+                optionsHtml += `<option value="${i}">Position ${i} (Has Image ID: ...${existing.id.toString().slice(-4)})</option>`;
+            } else {
+                optionsHtml += `<option value="${i}">Position ${i} (Empty)</option>`;
+            }
+        }
+
+        donePairs.forEach(pair => {
+            const div = document.createElement('div');
+            div.className = 'result-card';
+            const ghostLabel = pair.isGhostMode ? '<span class="tag-ghost">Ghost Mode</span>' : '';
+            div.innerHTML = `
+                <img src="${pair.resultUrl}" class="result-img" onclick="window.open('${pair.resultUrl}')" style="cursor:zoom-in">
+                <div class="result-actions">
+                    <div class="result-meta">
+                        <strong>${pair.garmentType}</strong> ${ghostLabel}<br>
+                        Title: ${state.storeB.title || 'N/A'}
+                    </div>
+                    <div style="border-top:1px solid #eee; padding-top:10px;">
+                        <label style="font-size:12px; font-weight:600;">Save to Store B:</label>
+                        <select id="replace-select-${pair.id}" style="width:100%; margin:5px 0;">
+                            ${optionsHtml}
+                        </select>
+
+                        <div class="replace-mode-group">
+                            <label class="replace-mode-option">
+                                <input type="radio" name="replace-mode-${pair.id}" value="replace" checked>
+                                Replace old image (Delete & Upload)
+                            </label>
+                            <label class="replace-mode-option">
+                                <input type="radio" name="replace-mode-${pair.id}" value="insert">
+                                Just upload (Keep old, insert new)
+                            </label>
+                        </div>
+
+                        <button style="width:100%" onclick="app.executeReplace('${pair.id}', 'replace-select-${pair.id}', this)">
+                            Push to Shopify
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+};
+
+const ui = {
+    toast: (msg, type = 'success') => {
+        const container = document.getElementById('toast-container');
+        const div = document.createElement('div');
+        div.className = `toast ${type}`;
+        div.innerText = msg;
+        container.appendChild(div);
+        setTimeout(() => div.remove(), 4000);
+    },
+    setLoading: (btn, isLoading) => {
+        if (isLoading) {
+            btn.dataset.text = btn.innerText;
+            btn.innerHTML = `<span class="spinner"></span> Wait`;
+            btn.disabled = true;
+        } else {
+            btn.innerText = btn.dataset.text || 'Action';
+            btn.disabled = false;
+        }
+    },
+    updateRunButton: () => {
+        const btn = document.getElementById('btn-run-ai');
+        const hasPending = state.pairs.some(p => p.status === 'pending' || p.status === 'error');
+        btn.disabled = !hasPending;
+    }
+};
+
+window.addEventListener('DOMContentLoaded', app.init);
+</script>
+</body>
+</html>

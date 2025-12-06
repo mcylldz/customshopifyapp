@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>API Config Test</title>
+</head>
+
+<body>
+    <h1>API Configuration Test</h1>
+    <div id="results"></div>
+
+    <script src="config.js"></script>
+    <script>
+        const results = document.getElementById('results');
+
+        let html = '<h2>API Keys Check:</h2>';
+
+        // Check if API_CONFIG exists
+        if (typeof API_CONFIG === 'undefined') {
+            html += '<p style="color:red;">❌ API_CONFIG not loaded! Check config.js</p>';
+        } else {
+            html += '<p style="color:green;">✅ API_CONFIG loaded</p>';
+
+            // Check OpenAI
+            if (API_CONFIG.OPENAI && API_CONFIG.OPENAI.API_KEY) {
+                const key = API_CONFIG.OPENAI.API_KEY;
+                const masked = key.substring(0, 7) + '...' + key.substring(key.length - 4);
+                html += `<p>✅ OpenAI Key: ${masked}</p>`;
+
+                // Validate format
+                if (key.startsWith('sk-')) {
+                    html += '<p style="color:green;">✅ OpenAI key format looks correct (starts with sk-)</p>';
+                } else {
+                    html += '<p style="color:red;">❌ OpenAI key format wrong (should start with sk-)</p>';
+                }
+            } else {
+                html += '<p style="color:red;">❌ OpenAI API_KEY missing in config.js</p>';
+            }
+
+            // Check FAL AI
+            if (API_CONFIG.FAL_AI && API_CONFIG.FAL_AI.API_KEY) {
+                const key = API_CONFIG.FAL_AI.API_KEY;
+                const masked = key.substring(0, 7) + '...' + key.substring(key.length - 4);
+                html += `<p>✅ FAL AI Key: ${masked}</p>`;
+
+                // Validate format
+                if (key.includes('-')) {
+                    html += '<p style="color:green;">✅ FAL AI key format looks correct</p>';
+                } else {
+                    html += '<p style="color:orange;">⚠️ FAL AI key format might be wrong</p>';
+                }
+            } else {
+                html += '<p style="color:red;">❌ FAL AI API_KEY missing in config.js</p>';
+            }
+
+            // Check Shopify
+            if (API_CONFIG.SHOPIFY && API_CONFIG.SHOPIFY.STORE_B) {
+                if (API_CONFIG.SHOPIFY.STORE_B.DOMAIN) {
+                    html += `<p>✅ Shopify Domain: ${API_CONFIG.SHOPIFY.STORE_B.DOMAIN}</p>`;
+                } else {
+                    html += '<p style="color:orange;">⚠️ Shopify domain not set</p>';
+                }
+
+                if (API_CONFIG.SHOPIFY.STORE_B.ACCESS_TOKEN) {
+                    const token = API_CONFIG.SHOPIFY.STORE_B.ACCESS_TOKEN;
+                    const masked = token.substring(0, 7) + '...' + token.substring(token.length - 4);
+                    html += `<p>✅ Shopify Token: ${masked}</p>`;
+                } else {
+                    html += '<p style="color:orange;">⚠️ Shopify access token not set</p>';
+                }
+            }
+        }
+
+        html += '<hr><h2>Console Output:</h2>';
+        html += '<p>Check browser console (F12) for detailed API_CONFIG</p>';
+
+        results.innerHTML = html;
+
+        // Also log to console
+        console.log('=== API CONFIG TEST ===');
+        console.log('Full API_CONFIG:', API_CONFIG);
+        console.log('OpenAI Key:', API_CONFIG?.OPENAI?.API_KEY);
+        console.log('FAL AI Key:', API_CONFIG?.FAL_AI?.API_KEY);
+        console.log('Shopify Domain:', API_CONFIG?.SHOPIFY?.STORE_B?.DOMAIN);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,391 @@
+{
+  "name": "ghost",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ghost-vton",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "71346c33-bb11-4a4b-846f-384a1395503d",
+      "name": "Webhook Ghost Mode",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1456,
+        112
+      ],
+      "webhookId": "be35f85c-a60d-44cc-9054-8908959ad834"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/nano-banana-pro/edit",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "KEY 3f3588a5-8c3d-46ae-a8cf-f014c4835fdd:c1743949c0165d753f28ba7a512fb3f8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"image_urls\": [\n    \"{{ $('Webhook Ghost Mode').first().json.body.pairs[0].garment_image_url }}\"\n  ],\n  \"prompt\": \"Professional studio product photography of a {{ $json.content }}. Invisible ghost mannequin effect: The garment is shown worn by an invisible form, creating a realistic 3D shape with natural volume, folds, and drape, as if floating. Details: Show only the clean inside fabric texture through the neck opening. Background: Pure, seamless flat white studio background. Lighting: Soft, even studio lighting to highlight fabric texture. View: Front view, centered. No: No visible mannequin, no hangers, no human models, no neck labels, no brand tags.\",\n\"aspect_ratio\": \"9:16\",\n\n\"resolution\": \"2K\"\n}\n\n",
+        "options": {}
+      },
+      "id": "09aeb486-f740-444e-a1dc-379eb33c0223",
+      "name": "Fal Create Ghost Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -720,
+        112
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "242e460e-3e00-43ba-a0bb-df3781b1cd60",
+      "name": "Wait 5s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -496,
+        112
+      ],
+      "webhookId": "e97c2485-3483-4ecd-9d42-29f430dc1b00"
+    },
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/nano-banana-pro/requests/{{ $('Fal Create Ghost Job').item.json.request_id }}/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "KEY 3f3588a5-8c3d-46ae-a8cf-f014c4835fdd:c1743949c0165d753f28ba7a512fb3f8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4ba3e246-0082-4f3e-ba3e-50e93fc29954",
+      "name": "Check Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -272,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "COMPLETED",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "abfa488d-82cd-406f-af8d-2a78c74ce719"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "done"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "COMPLETED",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "wait"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ca98fb57-ed4a-4aa8-92df-70f2f823f564",
+      "name": "Is Finished?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -48,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/nano-banana-pro/requests/{{ $('Fal Create Ghost Job').item.json.request_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Key YOUR_FAL_KEY_HERE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bf42c0a1-6489-424f-8754-3e0378dc0a4d",
+      "name": "Get Final Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      results: [\n        {\n          output_image: $json.images[0].url,\n          request_id: $('Fal Create Ghost Job').first().json.request_id,\n          status: \"success\",\n          mode: \"ghost\"\n        }\n      ]\n    }\n  }\n];"
+      },
+      "id": "52ee93e6-0af6-4b38-9248-c339e4780700",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "63749fcb-fe8d-4cc8-84ec-b8c9d71e0e6a",
+      "name": "Respond to App",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        656,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "text": "=Act as a technical fashion designer and expert product photographer. Analyze the garment in this image to create a high-fidelity description for an AI image generator.\n\nYour goal is to describe ONLY the garment so it can be recreated on an invisible ghost mannequin.\n\n**ANALYZE AND DESCRIBE STRICTLY:**\n1. **Fabric & Physics:** Exact material name (e.g., heavy french terry, sheer chiffon, rigid denim), texture weight, and how the fabric drapes or folds.\n2. **Construction Details:** Visible seams, stitching types (e.g., contrast stitch, overlock), hem style (raw, ribbed, folded).\n3. **Neckline & Hardware:** Collar shape, zippers, buttons, drawstrings, or metal accents.\n4. **Silhouette:** Fit type (oversized, boxy, bodycon) and sleeve style (raglan, drop shoulder).\n5. **Color:** Precise color shade (e.g., \"heather grey\" instead of \"grey\", \"navy blue\" instead of \"blue\").\n\nProduct Name:{{ $json.body.pairs[0].product_title }}\nProduct Category:{{ $json.body.pairs[0].garment_category }}\n\n**CRITICAL CONSTRAINTS:**\n- **IGNORE** the human model, skin, hair, face, and hands.\n- **IGNORE** the background or any props.\n- **DO NOT** use introductory phrases like \"The image shows...\".\n- **OUTPUT FORMAT:** A single, concise, comma-separated string of descriptive keywords.",
+        "imageUrls": "={{ $('Webhook Ghost Mode').first().json.body.pairs[0].garment_image_url }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1248,
+        112
+      ],
+      "id": "1a00e19f-5d67-4391-b599-002e99d37a36",
+      "name": "GPT-4o Vision Analysis",
+      "credentials": {
+        "openAiApi": {
+          "id": "q9rbORM7U7883Qk1",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook Ghost Mode": [
+      {
+        "json": {
+          "headers": {
+            "host": "dtt1z7t3.rcsrv.com",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+            "content-length": "314",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "accept-language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "176.234.130.92",
+            "cf-ipcountry": "TR",
+            "cf-ray": "9a49a1689f24f94c-DUS",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "content-type": "application/json",
+            "origin": "https://dancing-bubblegum-782277.netlify.app",
+            "priority": "u=1, i",
+            "referer": "https://dancing-bubblegum-782277.netlify.app/",
+            "sec-ch-ua": "\"Chromium\";v=\"142\", \"Google Chrome\";v=\"142\", \"Not_A Brand\";v=\"99\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"macOS\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "176.234.130.92, 172.69.109.53",
+            "x-forwarded-host": "dtt1z7t3.rcsrv.com",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "c1851e3d0e12",
+            "x-real-ip": "172.69.109.53"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "pairs": [
+              {
+                "model_image_url": "GHOST_MODE_NO_MODEL",
+                "garment_image_url": "https://cdn.shopify.com/s/files/1/0687/9959/4561/files/e80bf86426639cf9e67c6b76cec12c97.jpg?v=1764086538",
+                "garment_category": "DRESS",
+                "product_title": "Kadın Askılı V Yakalı önde çapraz Detaylı Janjan Krep Elbise",
+                "is_ghost_mode": true
+              }
+            ]
+          },
+          "webhookUrl": "https://dtt1z7t3.rcsrv.com/webhook/ghost-vton",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook Ghost Mode": {
+      "main": [
+        [
+          {
+            "node": "GPT-4o Vision Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fal Create Ghost Job": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5s": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Is Finished?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Finished?": {
+      "main": [
+        [
+          {
+            "node": "Get Final Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Final Result": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {
+            "node": "Respond to App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-4o Vision Analysis": {
+      "main": [
+        [
+          {
+            "node": "Fal Create Ghost Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f5a87fbd-bda8-4701-ad8f-43e360d72416",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "745a9ef9c4ec329291f6fc57d3bbe18025f470e409dc0b27daf0ff3bc7a1fd23"
+  },
+  "id": "LaZOUWnsgZKg2RcG",
+  "tags": []
+}

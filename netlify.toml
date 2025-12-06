@@ -1,0 +1,16 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# Redirect /api/* to Netlify Functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Environment variables (set these in Netlify dashboard)
+# SHOPIFY_STORE_B_DOMAIN
+# SHOPIFY_STORE_B_TOKEN
+# OPENAI_API_KEY
+# FAL_AI_KEY
+# GOOGLE_SHEETS_WEBHOOK_URL

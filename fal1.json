@@ -1,0 +1,233 @@
+{
+  "name": "fal1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vton-submit",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "4a8fb329-d4d8-4d4f-897b-4479a58231dd",
+      "name": "Webhook Submit",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        112
+      ],
+      "webhookId": "e9e00ed9-6b28-44dc-b9df-ee0386f164fc"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2923243b-6293-429d-b76f-a98e1ce37129",
+      "name": "Split Pairs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "text": "Analyze the person in this image to create a detailed physical description for an AI image generator (Flux/SDXL).\n\nFocus STRICTLY on these attributes:\n1. **Physical Identity:** Gender, ethnicity, skin tone, approximate age, face shape, and specific body type (e.g., slim, athletic, curvy).\n2. **Hair:** Exact color, length, texture (wavy, straight), and style.\n3. **Pose & Posture:** Describe the exact pose (e.g., standing facing forward, hands on hips, ¾ turn to right). Specify head angle and gaze direction.\n4. **Hands:** If hands are visible, describe their position accurately.\n\n**CRITICAL CONSTRAINTS:**\n- **DO NOT** describe the clothing they are currently wearing. Ignore the outfit completely.\n- **DO NOT** include introductory phrases like \"Here is the description\".\n- Output **ONLY** a concise, comma-separated descriptive string.",
+        "imageUrls": "={{ $('Split Pairs').first().json.body.pairs[0].model_image_url }}",
+        "options": {}
+      },
+      "id": "7725b49a-6fbb-4f5c-8649-ad989865bc47",
+      "name": "Model_Analiz",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "q9rbORM7U7883Qk1",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "text": "Act as a technical fashion designer. Analyze this garment image to create a high-fidelity prompt description for an AI image generator (Flux/SDXL).\n\nFocus STRICTLY on these attributes:\n1. **Garment Type & Fit:** Exact category (e.g., cropped hoodie, maxi dress), silhouette (oversized, tailored, flowy), and cut.\n2. **Fabric & Texture:** Specific material properties (e.g., chunky cable knit, sheer chiffon, rigid denim), surface finish (matte, satin, distressed), and fabric weight.\n3. **Neckline & Sleeves:** Specific styles (crew neck, off-shoulder, puff sleeves, raglan, cuffs).\n4. **Design Details:** Prints, patterns, embroidery, buttons, zippers, pockets, and seam placements.\n5. **Color:** Precise color names (e.g., \"crimson red\" instead of \"red\").\n\n**CRITICAL CONSTRAINTS:**\n- **DO NOT** describe the background, hanger, or the mannequin wearing it.\n- **DO NOT** include introductory phrases like \"Here is the description\".\n- **OUTPUT ONLY** a concise, comma-separated descriptive string ready for use in an image prompt.",
+        "imageUrls": "={{ $('Split Pairs').first().json.body.pairs[0].garment_image_url }}",
+        "simplify": false,
+        "options": {}
+      },
+      "id": "ae5b70a7-f871-4633-940b-aa63bf79abdb",
+      "name": "Garment_Analiz",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "q9rbORM7U7883Qk1",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/nano-banana-pro/edit",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "KEY 3f3588a5-8c3d-46ae-a8cf-f014c4835fdd:c1743949c0165d753f28ba7a512fb3f8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"image_urls\": [\n    \"{{ $('Split Pairs').first().json.body.pairs[0].model_image_url }}\",\n    \"{{ $('Split Pairs').first().json.body.pairs[0].garment_image_url }}\"\n  ],\n  \"prompt\": \"Professional editorial fashion photography. The exact same model from image 1 wearing a {{ $('Garment_Analiz').item.json.choices[0].message.content }}. The model description: {{ $('Model_Analiz').item.json.content }}. \\n\\n**IDENTITY & FACE:**\\n- Maintain exact facial features, bone structure, and expression of the model in image 1.Keep the angle, background, and environment exactly as shown in image 1.\\n- Do not alter face shape, eye color, or skin texture.\\n\\n**TECHNICAL REQUIREMENTS:**\\n- The garment fits perfectly with realistic fabric physics, natural folds, and heavy draping.\\n- High-fidelity texture rendering, studio lighting, 8k resolution, sharp focus.\\n- Masterpiece quality, photorealistic, volumetric lighting.\\n- Accurate body proportions, realistic hands, natural pose.\\n\\n**CONTEXT:**\\n- Product Name: {{ $('Split Pairs').first().json.body.pairs[0].product_title }}\\n- Product Type: {{ $('Split Pairs').first().json.body.pairs[0].garment_category }}\",\n  \"resolution\": \"2K\",\n  \"aspect_ratio\": \"9:16\"\n}",
+        "options": {}
+      },
+      "id": "0c644742-981d-4422-ab7a-0d92d2df277c",
+      "name": "Fal Create Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      request_id: $json.request_id,\n      status: \"queued\",\n      message: \"Job submitted successfully. Start polling.\"\n    }\n  }\n];"
+      },
+      "id": "f38612eb-db0f-4155-87aa-4a17bc2add73",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "793fc430-82fb-409b-85a8-5ef2b675d8ec",
+      "name": "Respond with ID",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        880,
+        112
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Submit": {
+      "main": [
+        [
+          {
+            "node": "Split Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Pairs": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Model_Analiz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model_Analiz": {
+      "main": [
+        [
+          {
+            "node": "Garment_Analiz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Garment_Analiz": {
+      "main": [
+        [
+          {
+            "node": "Fal Create Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fal Create Job": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond with ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e0ee0193-c436-4586-9c5d-800dc25ce778",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "745a9ef9c4ec329291f6fc57d3bbe18025f470e409dc0b27daf0ff3bc7a1fd23"
+  },
+  "id": "GDGoGn3k6N0kOEyS",
+  "tags": []
+}

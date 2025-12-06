@@ -1,0 +1,238 @@
+{
+  "name": "fal2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vton-status",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "cb93f521-515d-441c-81ab-7e3c7ce40021",
+      "name": "Webhook Status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        112
+      ],
+      "webhookId": "00cde09e-f279-4652-ac15-5009caa53efc"
+    },
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/nano-banana-pro/requests/{{ $json.body.request_id }}/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "KEY 3f3588a5-8c3d-46ae-a8cf-f014c4835fdd:c1743949c0165d753f28ba7a512fb3f8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5862c5bb-39a7-4389-aa01-0a7dfe3596ec",
+      "name": "Check Fal Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -688,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const status = $json.status;\nconst response = {\n    status: status,\n    request_id: $('Webhook Status').first().json.body.request_id\n};\n\nif (status === 'COMPLETED') {\n    // Fal bazen sonucu 'response_url' içinde JSON olarak, bazen direkt 'images' dizisinde döner.\n    // Status endpointi genelde image URL dönmez, bu yüzden tamamlandıysa result endpointine gitmemiz gerekebilir.\n    // Ancak Fal 'status' endpointi bazen logs ve metrics döner.\n    // En garantisi: Eğer COMPLETED ise result endpoint'ine gitmektir.\n    return [ { json: { ...response, fetch_result: true } } ];\n}\n\nreturn [ { json: { ...response, fetch_result: false } } ];"
+      },
+      "id": "96c116ec-edf1-496f-965a-965eb3f72e17",
+      "name": "Check Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.fetch_result }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "6a175cd5-1518-4825-b2ae-f648fcb5ed88",
+      "name": "Is Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/nano-banana-pro/requests/{{ $('Webhook Status').first().json.body.request_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "KEY 3f3588a5-8c3d-46ae-a8cf-f014c4835fdd:c1743949c0165d753f28ba7a512fb3f8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2564be13-5e8d-47c9-a1a7-932819ba1d0b",
+      "name": "Fetch Final Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      status: \"COMPLETED\",\n      output_image: $json.images[0].url\n    }\n  }\n];"
+      },
+      "id": "ff88b955-530e-4cf0-8847-cc90a85bff0c",
+      "name": "Format Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      status: $('Check Logic').first().json.status,\n      output_image: null\n    }\n  }\n];"
+      },
+      "id": "0de4a733-233b-43b7-9bd9-62699c363faa",
+      "name": "Format Pending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "ade08ef9-a000-45c6-8c68-56bc72dfc782",
+      "name": "Respond to App",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        448,
+        112
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Status": {
+      "main": [
+        [
+          {
+            "node": "Check Fal Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Fal Status": {
+      "main": [
+        [
+          {
+            "node": "Check Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Logic": {
+      "main": [
+        [
+          {
+            "node": "Is Completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Completed?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Final Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Final Result": {
+      "main": [
+        [
+          {
+            "node": "Format Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Pending": {
+      "main": [
+        [
+          {
+            "node": "Respond to App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4141ba1a-8301-47df-9734-21062a7c27c6",
+  "meta": {
+    "instanceId": "745a9ef9c4ec329291f6fc57d3bbe18025f470e409dc0b27daf0ff3bc7a1fd23"
+  },
+  "id": "eaj9Mb9OJg7LBvnj",
+  "tags": []
+}

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify Ürün SEO & Fiyat Güncelleyici v2</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f8f9fa; --border: #dee2e6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: #333; margin: 0; padding: 40px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        h1 { color: var(--primary); margin-bottom: 30px; border-bottom: 2px solid var(--border); padding-bottom: 15px; }
+        
+        /* Input Alanı */
+        .input-group { display: flex; gap: 15px; margin-bottom: 30px; }
+        input[type="text"] { flex: 1; padding: 15px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; }
+        button { padding: 15px 30px; background: var(--primary); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .btn-success { background-color: var(--accent); width: 100%; margin-top: 20px; font-size: 18px; }
+
+        /* Pagination Kontrolleri */
+        .pagination-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding: 10px; background: #f1f3f5; border-radius: 8px; }
+        .page-btn { padding: 8px 16px; background: #fff; border: 1px solid var(--border); color: var(--primary); border-radius: 4px; cursor: pointer; }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Tablo */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 15px; }
+        th { text-align: left; padding: 15px; background: #f1f3f5; color: var(--primary); font-weight: 600; border-bottom: 2px solid var(--border); }
+        td { padding: 15px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        img.thumb { width: 70px; height: 70px; object-fit: cover; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* Utility */
+        .hidden { display: none; }
+        .badge { padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-error { background: #f8d7da; color: #721c24; }
+        .price-change { display: flex; flex-direction: column; gap: 4px; }
+        .old-val { text-decoration: line-through; color: #999; font-size: 0.9em; }
+        .new-val { color: var(--accent); font-weight: bold; }
+        .loading-overlay { text-align: center; padding: 40px; color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🛍️ Shopify Koleksiyon Düzenleyici</h1>
+
+    <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
+        ⚠️ <strong>Ayarlar:</strong> Kod içindeki Webhook URL'lerini kontrol etmeyi unutmayın.
+    </div>
+
+    <div class="input-section">
+        <div class="input-group">
+            <input type="text" id="collectionUrl" placeholder="Örn: https://magazam.com/collections/yeni-sezon" />
+            <button id="btnFetch" onclick="fetchProducts()">Ürünleri Getir</button>
+        </div>
+    </div>
+
+    <div id="loading" class="loading-overlay hidden">
+        <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+        <span id="loadingText">İşleniyor...</span>
+    </div>
+
+    <div id="selectionSection" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Ürün Seçimi</h2>
+            <span id="countDisplay" style="color: #666; font-weight: bold;">0 ürün seçildi</span>
+        </div>
+
+        <div class="pagination-controls">
+            <button class="page-btn" onclick="changePage(-1)">« Önceki</button>
+            <span id="pageInfo">Sayfa 1 / 1</span>
+            <button class="page-btn" onclick="changePage(1)">Sonraki »</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th width="50"><input type="checkbox" id="selectAll" onchange="toggleAll()"></th>
+                    <th width="100">Görsel</th>
+                    <th>Ürün Adı</th>
+                    <th>Mevcut Fiyat</th>
+                </tr>
+            </thead>
+            <tbody id="productTable"></tbody>
+        </table>
+        
+        <button class="btn-success" onclick="processSelected()">SEÇİLENLERİ GÖNDER (SEO + FİYAT)</button>
+    </div>
+
+    <div id="resultSection" class="hidden">
+        <h2>✅ İşlem Raporu</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Durum</th>
+                    <th>Görsel</th>
+                    <th>Ürün Adı (Eski ➔ Yeni)</th>
+                    <th>Fiyat (Eski ➔ Yeni)</th>
+                    <th>Yeni Açıklama (Özet)</th>
+                </tr>
+            </thead>
+            <tbody id="resultTable"></tbody>
+        </table>
+        <button onclick="location.reload()" style="margin-top:20px;">Yeni İşlem Yap</button>
+    </div>
+</div>
+
+<script>
+    // --- AYARLAR ---
+    // n8n'deki Webhook URL'lerini buraya yapıştırın:
+    const GET_PRODUCTS_WEBHOOK_URL = "https://dtt1z7t3.rcsrv.com/webhook/get-products"; 
+    const PROCESS_PRODUCTS_WEBHOOK_URL = "https://dtt1z7t3.rcsrv.com/webhook/process-products"; 
+    // ---------------
+
+    let allProducts = [];      // API'den gelen tüm ürünler
+    let selectedIds = new Set(); // Seçili ürünlerin ID'lerini tutar
+    
+    // Pagination Değişkenleri
+    let currentPage = 1;
+    const itemsPerPage = 10; 
+
+    function showLoading(show, text="Yükleniyor...") {
+        const el = document.getElementById('loading');
+        document.getElementById('loadingText').innerText = text;
+        if(show) {
+            el.classList.remove('hidden');
+            document.getElementById('selectionSection').classList.add('hidden');
+            document.getElementById('resultSection').classList.add('hidden');
+        } else {
+            el.classList.add('hidden');
+        }
+    }
+
+    async function fetchProducts() {
+        const url = document.getElementById('collectionUrl').value;
+        if(!url) return alert("URL giriniz");
+        
+        showLoading(true, "Shopify'dan ürünler çekiliyor...");
+        selectedIds.clear(); // Yeni aramada seçimleri sıfırla
+
+        try {
+            const resp = await fetch(GET_PRODUCTS_WEBHOOK_URL, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ collectionUrl: url })
+            });
+            const data = await resp.json();
+            
+            // Eğer n8n { products: [...] } yerine farklı bir şey dönerse diye önlem:
+            allProducts = data.products || data || []; 
+            
+            if(allProducts.length === 0) {
+                showLoading(false);
+                return alert("Ürün bulunamadı!");
+            }
+
+            // Sayfalamayı sıfırla ve tabloyu çiz
+            currentPage = 1;
+            renderTable();
+            showLoading(false);
+            document.getElementById('selectionSection').classList.remove('hidden');
+        } catch(e) {
+            showLoading(false);
+            alert("Hata: " + e.message);
+        }
+    }
+
+    // Tabloyu Çiz (Sadece o sayfadaki ürünleri gösterir)
+    function renderTable() {
+        const tbody = document.getElementById('productTable');
+        tbody.innerHTML = '';
+
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageItems = allProducts.slice(start, end);
+
+        // Sayfa Bilgisini Güncelle
+        const totalPages = Math.ceil(allProducts.length / itemsPerPage);
+        document.getElementById('pageInfo').innerText = `Sayfa ${currentPage} / ${totalPages} (Toplam: ${allProducts.length})`;
+
+        pageItems.forEach(p => {
+            // Checkbox durumunu hatırla
+            const isChecked = selectedIds.has(String(p.id)) ? 'checked' : '';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="checkbox" class="p-check" value="${p.id}" ${isChecked} onchange="toggleSingle(this)"></td>
+                <td><img src="${p.imageUrl}" class="thumb" onerror="this.src='https://via.placeholder.com/70'"></td>
+                <td>${p.title}</td>
+                <td>${p.price} TL</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // "Tümünü Seç" kutusunu sayfaya göre güncelle
+        // (Opsiyonel: Burada sadece görsel olarak unchecked yapıyoruz, mantık karmaşıklaşmasın diye)
+        document.getElementById('selectAll').checked = false;
+        
+        updateCount();
+    }
+
+    // Sayfa Değiştirme
+    function changePage(direction) {
+        const totalPages = Math.ceil(allProducts.length / itemsPerPage);
+        const newPage = currentPage + direction;
+
+        if (newPage > 0 && newPage <= totalPages) {
+            currentPage = newPage;
+            renderTable();
+        }
+    }
+
+    // Tekil Seçim Mantığı
+    function toggleSingle(checkbox) {
+        if (checkbox.checked) {
+            selectedIds.add(checkbox.value);
+        } else {
+            selectedIds.delete(checkbox.value);
+        }
+        updateCount();
+    }
+
+    // Tümünü Seç (Sadece o sayfadakileri veya hepsini seçebilir, burada HEPSİNİ seçtiriyoruz)
+    function toggleAll() {
+        const checked = document.getElementById('selectAll').checked;
+        
+        // Mevcut sayfadaki ürünlerin checkboxlarını güncelle
+        document.querySelectorAll('.p-check').forEach(cb => cb.checked = checked);
+
+        // Veri setini güncelle
+        if (checked) {
+            // Hepsini sete ekle
+            allProducts.forEach(p => selectedIds.add(String(p.id)));
+        } else {
+            // Hepsini setten çıkar
+            selectedIds.clear();
+        }
+        updateCount();
+    }
+
+    function updateCount() {
+        document.getElementById('countDisplay').innerText = selectedIds.size + " ürün seçildi";
+    }
+
+    async function processSelected() {
+        if(selectedIds.size === 0) return alert("Seçim yapmadınız.");
+
+        // Seçilen ID'lere göre ürün objelerini bul
+        const productsToSend = allProducts.filter(p => selectedIds.has(String(p.id)));
+        const payload = { products: productsToSend };
+        
+        showLoading(true, `Seçilen ${productsToSend.length} ürün işleniyor... Bu işlem zaman alabilir.`);
+
+        try {
+            const resp = await fetch(PROCESS_PRODUCTS_WEBHOOK_URL, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            
+            console.log("Gelen Sonuç:", data); // Hata ayıklama için konsola yazdırıyoruz
+
+            renderResults(data.results || []);
+            showLoading(false);
+            document.getElementById('resultSection').classList.remove('hidden');
+        } catch(e) {
+            showLoading(false);
+            alert("İşlem hatası: " + e.message);
+        }
+    }
+
+    // Sonuç Tablosu (Undefined Hatası Düzeltildi)
+    function renderResults(results) {
+        const tbody = document.getElementById('resultTable');
+        
+        if (!results || results.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5">Sonuç dönmedi.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = results.map(r => {
+            // ID eşleştirmesini string'e çevirerek yapıyoruz (Number/String hatasını önler)
+            const p = allProducts.find(x => String(x.id) === String(r.id)) || {};
+            
+            const isErr = r.status !== 'updated'; // status: error veya updated
+            
+            // Eğer değerler undefined gelirse tire (-) koy
+            const oldTitle = r.old_title || (p.title || '-');
+            const newTitle = r.new_title || r.error_message || '-';
+            const oldPrice = r.old_price ? r.old_price + ' TL' : '-';
+            const newPrice = r.new_price ? r.new_price + ' TL' : '-';
+            const desc = r.new_description ? r.new_description.substring(0, 80) + '...' : '-';
+
+            return `
+            <tr>
+                <td><span class="badge ${isErr ? 'badge-error' : 'badge-success'}">${isErr ? 'HATA' : 'GÜNCELLENDİ'}</span></td>
+                <td><img src="${p.imageUrl || ''}" class="thumb" onerror="this.style.display='none'"></td>
+                <td>
+                    <div class="price-change">
+                        <span class="old-val">${oldTitle}</span>
+                        <span class="new-val">${newTitle}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="price-change">
+                        <span class="old-val">${oldPrice}</span>
+                        <span class="new-val">${newPrice}</span>
+                    </div>
+                </td>
+                <td style="font-size:12px; color:#666;">${desc}</td>
+            </tr>
+            `;
+        }).join('');
+    }
+</script>
+</body>
+</html>

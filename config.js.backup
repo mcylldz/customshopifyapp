@@ -1,0 +1,162 @@
+/**
+ * API Configuration File
+ * 
+ * IMPORTANT: This file contains sensitive API keys and credentials.
+ * DO NOT commit this file to Git or share publicly.
+ * Add this file to .gitignore
+ */
+
+const API_CONFIG = {
+    // ============================================
+    // SHOPIFY API
+    // ============================================
+    SHOPIFY: {
+        // Your Shopify store domain (e.g., "mystore.myshopify.com")
+        STORE_DOMAIN: "",
+
+        // Admin API Access Token
+        // Create from: Shopify Admin > Apps > Develop apps > Create custom app
+        ADMIN_API_TOKEN: "",
+
+        // API Version (e.g., "2024-01")
+        API_VERSION: "2024-01",
+
+        // Store A (Models)
+        STORE_A: {
+            DOMAIN: "",
+            ACCESS_TOKEN: ""
+        },
+
+        // Store B (Garments/Main Store)
+        STORE_B: {
+            DOMAIN: "",
+            ACCESS_TOKEN: ""
+        }
+    },
+
+    // ============================================
+    // GOOGLE SHEETS API
+    // ============================================
+    GOOGLE_SHEETS: {
+        // API Key from Google Cloud Console
+        // Enable "Google Sheets API" in your project
+        API_KEY: "",
+
+        // OAuth 2.0 Client ID (if using OAuth)
+        CLIENT_ID: "",
+
+        // Your Google Sheets ID (from the URL)
+        // Example: https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit
+        SHEET_ID: "",
+
+        // Sheet name/tab to use
+        SHEET_NAME: "Sheet1"
+    },
+
+    // ============================================
+    // FAL AI API
+    // ============================================
+    FAL_AI: {
+        // FAL AI API Key
+        // Get from: https://fal.ai/dashboard
+        API_KEY: "",
+
+        // Model endpoints you're using
+        MODELS: {
+            // Virtual Try-On model
+            VTON: "fal-ai/virtual-tryon",
+
+            // Image generation
+            IMAGE_GEN: "fal-ai/flux-pro",
+
+            // Add other models as needed
+        }
+    },
+
+    // ============================================
+    // OPENAI API
+    // ============================================
+    OPENAI: {
+        // OpenAI API Key
+        // Get from: https://platform.openai.com/api-keys
+        API_KEY: "",
+
+        // Organization ID (optional)
+        ORGANIZATION_ID: "",
+
+        // Default model to use
+        MODEL: "gpt-4o-mini",
+
+        // Models for specific tasks
+        MODELS: {
+            SEO_OPTIMIZATION: "gpt-4o",
+            PRODUCT_DESCRIPTION: "gpt-4o-mini",
+            IMAGE_ANALYSIS: "gpt-4o"
+        }
+    },
+
+    // ============================================
+    // N8N WEBHOOKS (Existing)
+    // ============================================
+    N8N: {
+        BASE_URL: "https://dtt1z7t3.rcsrv.com",
+
+        WEBHOOKS: {
+            VTON_SUBMIT: "https://dtt1z7t3.rcsrv.com/webhook/vton-submit",
+            VTON_STATUS: "https://dtt1z7t3.rcsrv.com/webhook/vton-status",
+            VTON_GHOST: "https://dtt1z7t3.rcsrv.com/webhook/ghost-vton",
+            REPLACE_IMAGE: "https://dtt1z7t3.rcsrv.com/webhook/replace-image",
+            SEO_GET_PRODUCTS: "https://dtt1z7t3.rcsrv.com/webhook/get-products",
+            SEO_PROCESS: "https://dtt1z7t3.rcsrv.com/webhook/process-products"
+        }
+    },
+
+    // ============================================
+    // OTHER SETTINGS
+    // ============================================
+    SETTINGS: {
+        // CORS Proxy for WordPress scraping
+        CORS_PROXY: "https://api.allorigins.win/raw?url=",
+
+        // Maximum concurrent requests
+        CONCURRENCY_LIMIT: 20,
+
+        // Request timeout (milliseconds)
+        TIMEOUT: 30000,
+
+        // Enable debug logging
+        DEBUG: false
+    }
+};
+
+// Helper function to validate if all required keys are set
+function validateConfig() {
+    const warnings = [];
+
+    if (!API_CONFIG.SHOPIFY.ADMIN_API_TOKEN) {
+        warnings.push("⚠️ Shopify Admin API Token not set");
+    }
+
+    if (!API_CONFIG.GOOGLE_SHEETS.API_KEY) {
+        warnings.push("⚠️ Google Sheets API Key not set");
+    }
+
+    if (!API_CONFIG.FAL_AI.API_KEY) {
+        warnings.push("⚠️ FAL AI API Key not set");
+    }
+
+    if (!API_CONFIG.OPENAI.API_KEY) {
+        warnings.push("⚠️ OpenAI API Key not set");
+    }
+
+    if (warnings.length > 0 && API_CONFIG.SETTINGS.DEBUG) {
+        console.warn("Config warnings:", warnings);
+    }
+
+    return warnings;
+}
+
+// Export for use in other files
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = API_CONFIG;
+}
