@@ -6,19 +6,25 @@
 // Check if we're on Netlify
 const isNetlify = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 
+// In local mode, try to load from config.js if it exists
+let localConfig = {};
+if (!isNetlify && typeof API_CONFIG !== 'undefined') {
+    localConfig = API_CONFIG;
+}
+
 // Create API_CONFIG object
 window.API_CONFIG = {
     SHOPIFY: {
         STORE_B: {
-            DOMAIN: isNetlify ? '' : 'thebritishwoman.myshopify.com', // Not needed on Netlify
-            ACCESS_TOKEN: '' // Not needed on Netlify - function uses env vars
+            DOMAIN: localConfig.SHOPIFY?.STORE_B?.DOMAIN || '',
+            ACCESS_TOKEN: localConfig.SHOPIFY?.STORE_B?.ACCESS_TOKEN || ''
         },
-        ADMIN_API_TOKEN: '',
+        ADMIN_API_TOKEN: localConfig.SHOPIFY?.ADMIN_API_TOKEN || '',
         API_VERSION: '2024-01'
     },
 
     OPENAI: {
-        API_KEY: '' // Not needed on Netlify - function uses env vars
+        API_KEY: localConfig.OPENAI?.API_KEY || localConfig.BRAND?.API_KEY || ''
     },
 
     FAL_AI: {

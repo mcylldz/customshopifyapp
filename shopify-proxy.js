@@ -285,6 +285,19 @@ function scrapeWordPress(wpUrl, res) {
 function proxyOpenAI(data, res) {
     console.log('🤖 Forwarding to OpenAI Vision API...');
 
+    // For local development, read from config-WORKING.js
+    // This matches Netlify function behavior (reads from environment)
+    let apiKey = data.api_key; // Fallback to data if provided
+
+    // Try to read from local config file (Node.js can't directly import browser config) 
+    // Just use data.api_key for now - frontend will send it in local mode
+    if (!apiKey) {
+        console.error('❌ No OpenAI API key provided');
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'OpenAI API key required' }));
+        return;
+    }
+
     const payload = JSON.stringify(data.payload);
 
     const options = {
