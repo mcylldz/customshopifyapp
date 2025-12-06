@@ -275,47 +275,71 @@ const productBuilderApp = {
         btn.disabled = true;
         btn.textContent = 'Processing...';
 
-        for (const pair of productBuilder.vtonPairs) {
-            if (pair.status === 'done') continue;
+        const pending = productBuilder.vtonPairs.filter(p => p.status !== 'done');
 
-            try {
-                pair.status = 'processing';
-                this.renderVTONPairs();
+        if (pending.length === 0) {
+            btn.disabled = false;
+            btn.textContent = '🎬 Process All Pairs';
+            showToast('No pairs to process', 'error');
+            return;
+        }
 
-                let resultUrl;
+        showToast(`🚀 Processing ${pending.length} pairs in batches of 10...`, 'success');
 
-                if (pair.mode === 'sizechart') {
-                    // Upload logo.png to get URL
-                    const logoUrl = window.location.origin + '/logo.png';
-                    const result = await window.VTON.processSizeChartMode(pair.garmentUrl, logoUrl);
-                    resultUrl = result.output_image;
-                } else if (pair.mode === 'fabric') {
-                    const result = await window.VTON.processFabricMode(pair.garmentUrl, pair.fabricInfo);
-                    resultUrl = result.output_image;
-                } else if (pair.mode === 'ghost') {
-                    const result = await window.VTON.processGhostMode(pair.garmentUrl, pair.garmentType, 'Product', pair.fabricInfo);
-                    resultUrl = result.output_image;
-                } else {
-                    // Regular VTON
-                    const result = await window.VTON.processVTONPair(pair.modelUrl, pair.garmentUrl, pair.garmentType, 'Product', pair.fabricInfo);
-                    resultUrl = await window.VTON.pollVTONResult(result.request_id);
-                }
+        // Process in batches of 10 for parallel execution
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+            const batch = pending.slice(i, i + BATCH_SIZE);
+            console.log(`📦 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(pending.length / BATCH_SIZE)} (${batch.length} pairs)`);
 
-                pair.resultUrl = resultUrl;
-                pair.status = 'done';
-                this.renderVTONPairs();
-                showToast(`✅ Pair ${productBuilder.vtonPairs.indexOf(pair) + 1} completed`);
+            // Process all pairs in this batch concurrently
+            await Promise.allSettled(batch.map(pair => this.processSinglePair(pair)));
 
-            } catch (e) {
-                pair.status = 'error';
-                this.renderVTONPairs();
-                showToast(`❌ Pair ${productBuilder.vtonPairs.indexOf(pair) + 1} failed: ${e.message}`, 'error');
-            }
+            this.renderVTONPairs();
         }
 
         btn.disabled = false;
         btn.textContent = '🎬 Process All Pairs';
-        showToast('✅ All pairs processed!');
+
+        const completed = productBuilder.vtonPairs.filter(p => p.status === 'done').length;
+        const failed = productBuilder.vtonPairs.filter(p => p.status === 'error').length;
+        showToast(`✅ Batch complete! ${completed} successful, ${failed} failed`, completed > 0 ? 'success' : 'error');
+    },
+
+    async processSinglePair(pair) {
+        try {
+            pair.status = 'processing';
+            this.renderVTONPairs();
+
+            let resultUrl;
+
+            if (pair.mode === 'sizechart') {
+                // Upload logo.png to get URL
+                const logoUrl = window.location.origin + '/logo.png';
+                const result = await window.VTON.processSizeChartMode(pair.garmentUrl, logoUrl);
+                resultUrl = result.output_image;
+            } else if (pair.mode === 'fabric') {
+                const result = await window.VTON.processFabricMode(pair.garmentUrl, pair.fabricInfo);
+                resultUrl = result.output_image;
+            } else if (pair.mode === 'ghost') {
+                const result = await window.VTON.processGhostMode(pair.garmentUrl, pair.garmentType, 'Product', pair.fabricInfo);
+                resultUrl = result.output_image;
+            } else {
+                // Regular VTON
+                const result = await window.VTON.processVTONPair(pair.modelUrl, pair.garmentUrl, pair.garmentType, 'Product', pair.fabricInfo);
+                resultUrl = await window.VTON.pollVTONResult(result.request_id);
+            }
+
+            pair.resultUrl = resultUrl;
+            pair.status = 'done';
+            this.renderVTONPairs();
+            console.log(`✅ Pair completed:`, pair);
+
+        } catch (e) {
+            pair.status = 'error';
+            this.renderVTONPairs();
+            console.error(`❌ Pair failed:`, e);
+        }
     },
 
     continueToAI() {
