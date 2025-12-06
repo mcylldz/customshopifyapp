@@ -1178,21 +1178,20 @@
                             // Format: "119,50" -> just replace comma with dot
                             cleanPrice = cleanPrice.replace(',', '.');
                         } else if (cleanPrice.includes('.')) {
-                            // Ambiguous: could be "1.119" (thousand) or "1.99" (decimal)
-                            // Check position of dot
+                            // Turkish sites use dot as thousand separator
+                            // Check if it looks like a thousand separator
                             const parts = cleanPrice.split('.');
-                            if (parts.length === 2 && parts[1].length === 3 && parts[0].length <= 3) {
-                                // Likely thousand separator: "1.119"
-                                cleanPrice = cleanPrice.replace('.', '');
-                            } else if (parts.length > 2) {
-                                // Multiple dots = thousand separators: "12.345.678"
+
+                            // If we have multiple dots OR the part after dot is 3 digits, it's thousands
+                            if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+                                // Remove all dots (they're thousand separators)
                                 cleanPrice = cleanPrice.replace(/\./g, '');
                             }
-                            // Otherwise assume decimal point (for prices like "9.99")
+                            // Otherwise keep dot as decimal (for prices like "9.99" from international sites)
                         }
 
                         price = parseFloat(cleanPrice);
-                        console.log('Parsed price:', price);
+                        console.log('Parsed price:', price, 'from:', typeof price === 'string' ? price : cleanPrice);
                     }
 
                     // Extract images using multiple methods

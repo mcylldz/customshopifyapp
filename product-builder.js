@@ -848,10 +848,29 @@ HAM ÜRÜN ADI: ${originalTitle}`;
 
         } catch (e) {
             console.error('❌ CLIENT ERROR:', e);
-            showToast('Publish failed: ' + e.message, 'error');
+
+            let errorMessage = e.message;
+            let detailedError = '';
+
+            // Try to parse Shopify error details from response
+            try {
+                const errorMatch = e.message.match(/\{.*\}/);
+                if (errorMatch) {
+                    const errorObj = JSON.parse(errorMatch[0]);
+                    if (errorObj.shopify_error) {
+                        errorMessage = 'Shopify API Error';
+                        detailedError = '<pre style="background:#fff; padding:10px; border-radius:4px; overflow-x:auto; margin-top:10px;">' +
+                            JSON.stringify(errorObj.shopify_error, null, 2) +
+                            '</pre>';
+                    }
+                }
+            } catch { }
+
+            showToast('Publish failed: ' + errorMessage, 'error');
             document.getElementById('pb-publish-result').innerHTML = `
                 <div style="background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; padding:15px; border-radius:8px;">
-                    <strong>❌ Error:</strong> ${e.message}
+                    <strong>❌ Error:</strong> ${errorMessage}
+                    ${detailedError}
                 </div>
             `;
         } finally {

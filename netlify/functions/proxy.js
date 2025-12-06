@@ -320,12 +320,16 @@ async function createProduct(domain, token, productData) {
     return new Promise((resolve) => {
         const payload = JSON.stringify({ product: productData });
 
-        console.log('=== Shopify Create Product Debug ===');
+        console.log('=== 🔍 SHOPIFY CREATE PRODUCT DEBUG (NETLIFY) ===');
         console.log('Domain:', domain);
         console.log('Payload size:', payload.length, 'bytes');
         console.log('Product title:', productData.title);
         console.log('Variants count:', productData.variants?.length);
         console.log('Images count:', productData.images?.length);
+        console.log('🔍 FULL PRODUCT DATA:');
+        console.log(JSON.stringify(productData, null, 2));
+        console.log('🔍 FULL PAYLOAD TO SHOPIFY:');
+        console.log(payload);
 
         const options = {
             hostname: domain,
@@ -338,15 +342,20 @@ async function createProduct(domain, token, productData) {
             }
         };
 
+        console.log('🔍 API URL:', `https://${domain}${options.path}`);
+
         const req = https.request(options, (response) => {
             let data = '';
             response.on('data', chunk => data += chunk);
             response.on('end', () => {
-                console.log('Shopify Response Status:', response.statusCode);
-                console.log('Shopify Response Body:', data);
+                console.log('📨 Shopify Response Status:', response.statusCode);
+                console.log('📨 Response Headers:', JSON.stringify(response.headers, null, 2));
+                console.log('📄 FULL Shopify Response Body:');
+                console.log(data);
 
                 if (response.statusCode === 201) {
                     const result = JSON.parse(data);
+                    console.log('✅ SUCCESS - Product ID:', result.product.id);
                     resolve({
                         statusCode: 201,
                         headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
@@ -358,15 +367,24 @@ async function createProduct(domain, token, productData) {
                     });
                 } else {
                     // Return detailed error for debugging
-                    console.error('Shopify API Error:', response.statusCode, data);
+                    console.error('❌ Shopify API Error:', response.statusCode);
+                    console.error('❌ Error Response:', data);
+
+                    let errorDetails;
+                    try {
+                        errorDetails = JSON.parse(data);
+                    } catch {
+                        errorDetails = { raw: data };
+                    }
+
                     resolve({
                         statusCode: response.statusCode,
                         headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             error: true,
                             statusCode: response.statusCode,
-                            message: data,
-                            payload: productData // Include payload for debugging
+                            shopify_error: errorDetails,
+                            sent_payload: productData // Include payload for debugging
                         })
                     });
                 }
@@ -374,11 +392,13 @@ async function createProduct(domain, token, productData) {
         });
 
         req.on('error', (error) => {
+            console.error('❌ HTTPS Request Error:', error);
             resolve(errorResponse(500, error.message));
         });
 
         req.write(payload);
         req.end();
+        console.log('📤 Request sent to Shopify API');
     });
 }
 
