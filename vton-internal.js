@@ -18,12 +18,9 @@ const VTON_API = {
  * Replicates: "Model_Analiz" node from fal1
  */
 async function analyzeModelImage(modelImageUrl) {
-    const prompt = `Analyze the person in this image to create a detailed physical description for an AI image generator (Flux/SDXL).
-
-Focus STRICTLY on these attributes:
-    const prompt = `Describe this fashion model image for an AI image generator.Focus on:
-    1. The model's pose, gender, and visible physical traits.
-    2. The clothing they are currently wearing(to be replaced).
+    const prompt = `Describe this fashion model image for an AI image generator. Focus on:
+1. The model's pose, gender, and visible physical traits.
+2. The clothing they are currently wearing (to be replaced).
 3. The lighting, background, and camera angle.
 Output a concise, descriptive prompt.`;
 
@@ -31,7 +28,7 @@ Output a concise, descriptive prompt.`;
     let lastError = null;
 
     for (const model of models) {
-        console.log(`Trying OpenAI model: ${ model } for Model Analysis...`);
+        console.log(`Trying OpenAI model: ${model} for Model Analysis...`);
         try {
             const response = await fetch(window.API_BASE_URL, {
                 method: 'POST',
@@ -56,7 +53,7 @@ Output a concise, descriptive prompt.`;
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`HTTP ${ response.status }: ${ errText } `);
+                throw new Error(`HTTP ${response.status}: ${errText} `);
             }
 
             const data = await response.json();
@@ -67,11 +64,11 @@ Output a concise, descriptive prompt.`;
                 throw new Error('Content Policy Rejection');
             }
 
-            console.log(`✅ Success with model: ${ model } `);
+            console.log(`✅ Success with model: ${model} `);
             return content;
 
         } catch (error) {
-            console.warn(`❌ Model ${ model } failed: `, error.message);
+            console.warn(`❌ Model ${model} failed: `, error.message);
             lastError = error;
             // Continue to next model...
         }
@@ -86,7 +83,7 @@ Output a concise, descriptive prompt.`;
  * Replicates: "Garment_Analiz" node from fal1
  */
 async function analyzeGarmentImage(garmentImageUrl, fabricInfo = '') {
-    const fabricHint = fabricInfo ? `\n\n ** USER PROVIDED FABRIC INFO:** ${ fabricInfo } - Use this information to enhance your material and texture description.` : '';
+    const fabricHint = fabricInfo ? `\n\n ** USER PROVIDED FABRIC INFO:** ${fabricInfo} - Use this information to enhance your material and texture description.` : '';
 
     const prompt = `Act as a technical fashion designer.Analyze this garment image to create a high - fidelity prompt description for an AI image generator(Flux / SDXL).
 
@@ -95,7 +92,7 @@ Focus STRICTLY on these attributes:
 2. ** Fabric & Texture:** Specific material properties(e.g., chunky cable knit, sheer chiffon, rigid denim), surface finish(matte, satin, distressed), and fabric weight.
 3. ** Neckline & Sleeves:** Specific styles(crew neck, off - shoulder, puff sleeves, raglan, cuffs).
 4. ** Design Details:** Prints, patterns, embroidery, buttons, zippers, pockets, and seam placements.
-5. ** Color:** Precise color names(e.g., "crimson red" instead of "red").${ fabricHint }
+5. ** Color:** Precise color names(e.g., "crimson red" instead of "red").${fabricHint}
 
 ** CRITICAL CONSTRAINTS:**
 - ** DO NOT ** describe the background, hanger, or the mannequin wearing it.
@@ -107,7 +104,7 @@ Focus STRICTLY on these attributes:
     let lastError = null;
 
     for (const model of models) {
-        console.log(`Trying OpenAI model: ${ model } for Garment Analysis...`);
+        console.log(`Trying OpenAI model: ${model} for Garment Analysis...`);
         try {
             const response = await fetch(window.API_BASE_URL, {
                 method: 'POST',
@@ -132,7 +129,7 @@ Focus STRICTLY on these attributes:
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`HTTP ${ response.status }: ${ errText } `);
+                throw new Error(`HTTP ${response.status}: ${errText} `);
             }
 
             const data = await response.json();
@@ -142,10 +139,10 @@ Focus STRICTLY on these attributes:
                 throw new Error('Content Policy Rejection');
             }
 
-            console.log(`✅ Success with model: ${ model } `);
+            console.log(`✅ Success with model: ${model} `);
             return content;
         } catch (error) {
-            console.warn(`❌ Model ${ model } failed: `, error.message);
+            console.warn(`❌ Model ${model} failed: `, error.message);
             lastError = error;
         }
     }
@@ -160,7 +157,7 @@ Focus STRICTLY on these attributes:
  * Replicates: "Fal Create Job" node from fal1
  */
 async function submitVTONJob(modelImageUrl, garmentImageUrl, modelDescription, garmentDescription, productTitle, garmentCategory) {
-    const prompt = `Professional editorial fashion photography.The exact same model from image 1 wearing a ${ garmentDescription }. The model description: ${ modelDescription }. 
+    const prompt = `Professional editorial fashion photography.The exact same model from image 1 wearing a ${garmentDescription}. The model description: ${modelDescription}. 
 
 ** IDENTITY & FACE:**
         - Maintain exact facial features, bone structure, and expression of the model in image 1.Keep the angle, background, and environment exactly as shown in image 1.
@@ -173,8 +170,8 @@ async function submitVTONJob(modelImageUrl, garmentImageUrl, modelDescription, g
 - Accurate body proportions, realistic hands, natural pose.
 
 ** CONTEXT:**
-        - Product Name: ${ productTitle }
-    - Product Type: ${ garmentCategory } `;
+        - Product Name: ${productTitle}
+    - Product Type: ${garmentCategory} `;
 
     // Route through Netlify proxy for secure API key management
     const response = await fetch(window.API_BASE_URL, {
@@ -194,7 +191,7 @@ async function submitVTONJob(modelImageUrl, garmentImageUrl, modelDescription, g
     });
 
     if (!response.ok) {
-        throw new Error(`FAL AI submission failed: ${ response.status } `);
+        throw new Error(`FAL AI submission failed: ${response.status} `);
     }
 
     const data = await response.json();
@@ -218,47 +215,47 @@ async function checkVTONStatus(requestId) {
         },
         body: JSON.stringify({
             action: 'fal_status',
-            path: `/ fal - ai / nano - banana - pro / requests / ${ requestId }/status`
-})
-    });
-
-if (!statusResponse.ok) {
-    throw new Error(`Status check failed: ${statusResponse.status}`);
-}
-
-const statusData = await statusResponse.json();
-
-// If completed, fetch the final result
-if (statusData.status === 'COMPLETED') {
-    // Fetch final result through proxy
-    const resultResponse = await fetch(window.API_BASE_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            action: 'fal_status',
-            path: `/fal-ai/nano-banana-pro/requests/${requestId}`
+            path: `/ fal - ai / nano - banana - pro / requests / ${requestId}/status`
         })
     });
 
-    if (!resultResponse.ok) {
-        throw new Error(`Result fetch failed: ${resultResponse.status}`);
+    if (!statusResponse.ok) {
+        throw new Error(`Status check failed: ${statusResponse.status}`);
     }
 
-    const resultData = await resultResponse.json();
+    const statusData = await statusResponse.json();
 
+    // If completed, fetch the final result
+    if (statusData.status === 'COMPLETED') {
+        // Fetch final result through proxy
+        const resultResponse = await fetch(window.API_BASE_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'fal_status',
+                path: `/fal-ai/nano-banana-pro/requests/${requestId}`
+            })
+        });
+
+        if (!resultResponse.ok) {
+            throw new Error(`Result fetch failed: ${resultResponse.status}`);
+        }
+
+        const resultData = await resultResponse.json();
+
+        return {
+            status: 'COMPLETED',
+            output_image: resultData.images[0].url
+        };
+    }
+
+    // Still processing
     return {
-        status: 'COMPLETED',
-        output_image: resultData.images[0].url
+        status: statusData.status,
+        output_image: null
     };
-}
-
-// Still processing
-return {
-    status: statusData.status,
-    output_image: null
-};
 }
 
 /**
