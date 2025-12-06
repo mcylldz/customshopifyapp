@@ -446,7 +446,7 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                 },
                 body: JSON.stringify({
                     action: 'openai_vision',
-                    api_key: API_CONFIG.OPENAI.API_KEY,
+                    // api_key removed - Netlify function reads from process.env
                     payload: {
                         model: 'gpt-4o',
                         messages: [{

@@ -130,6 +130,14 @@ async function scrapeWordPress(wpUrl) {
 // OpenAI Vision Proxy
 async function proxyOpenAI(data) {
     return new Promise((resolve) => {
+        // Use environment variable instead of data.api_key
+        const apiKey = process.env.OPENAI_API_KEY;
+
+        if (!apiKey) {
+            resolve(errorResponse(500, 'OpenAI API key not configured in environment'));
+            return;
+        }
+
         const payload = JSON.stringify(data.payload);
 
         const options = {
@@ -137,7 +145,7 @@ async function proxyOpenAI(data) {
             path: '/v1/chat/completions',
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${data.api_key}`,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(payload)
             }
@@ -167,14 +175,23 @@ async function proxyOpenAI(data) {
 // Shopify Product Creation
 async function createProduct(domain, token, productData) {
     return new Promise((resolve) => {
+        // Use environment variables if not provided
+        const shopifyDomain = domain || process.env.SHOPIFY_STORE_B_DOMAIN;
+        const shopifyToken = token || process.env.SHOPIFY_STORE_B_TOKEN;
+
+        if (!shopifyDomain || !shopifyToken) {
+            resolve(errorResponse(500, 'Shopify credentials not configured'));
+            return;
+        }
+
         const payload = JSON.stringify({ product: productData });
 
         const options = {
-            hostname: domain,
+            hostname: shopifyDomain,
             path: '/admin/api/2024-01/products.json',
             method: 'POST',
             headers: {
-                'X-Shopify-Access-Token': token,
+                'X-Shopify-Access-Token': shopifyToken,
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(payload)
             }
