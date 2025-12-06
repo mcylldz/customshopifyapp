@@ -1172,31 +1172,37 @@
                         let cleanPrice = typeof price === 'string' ? price.replace(/[^\d.,]/g, '').trim() : price.toString();
                         console.log('🔍 PRICE DEBUG - After removing currency:', cleanPrice);
 
-                        // Turkish format: dots are thousand separators, commas are decimal separators
-                        // Check if there's a comma (decimal separator)
+                        // Detect format based on which separator comes last
                         if (cleanPrice.includes(',') && cleanPrice.includes('.')) {
-                            // Format: "1.119,50" -> remove dots, replace comma with dot
-                            console.log('🔍 PRICE DEBUG - Format: both comma and dot (Turkish)');
-                            cleanPrice = cleanPrice.replace(/\./g, '').replace(',', '.');
+                            // Both separators present - which is decimal?
+                            const lastComma = cleanPrice.lastIndexOf(',');
+                            const lastDot = cleanPrice.lastIndexOf('.');
+
+                            if (lastDot > lastComma) {
+                                // Format: "1,119.90" (American: comma=thousands, dot=decimal)
+                                console.log('🔍 PRICE DEBUG - Format: American (1,119.90)');
+                                cleanPrice = cleanPrice.replace(/,/g, ''); // Remove commas
+                            } else {
+                                // Format: "1.119,50" (Turkish: dot=thousands, comma=decimal)
+                                console.log('🔍 PRICE DEBUG - Format: Turkish (1.119,50)');
+                                cleanPrice = cleanPrice.replace(/\./g, '').replace(',', '.');
+                            }
                         } else if (cleanPrice.includes(',')) {
-                            // Format: "119,50" -> just replace comma with dot
+                            // Only comma - decimal separator
                             console.log('🔍 PRICE DEBUG - Format: comma only (decimal)');
                             cleanPrice = cleanPrice.replace(',', '.');
                         } else if (cleanPrice.includes('.')) {
-                            // Turkish sites use dot as thousand separator
-                            // Check if it looks like a thousand separator
+                            // Only dot - need to determine if thousands or decimal
                             const parts = cleanPrice.split('.');
                             console.log('🔍 PRICE DEBUG - Format: dot only, parts:', parts);
 
-                            // If we have multiple dots OR the part after dot is 3 digits, it's thousands
+                            // If we have multiple dots OR the part after dot is exactly 3 digits, it's thousands
                             if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
-                                // Remove all dots (they're thousand separators)
                                 console.log('🔍 PRICE DEBUG - Detected as thousand separator, removing dots');
                                 cleanPrice = cleanPrice.replace(/\./g, '');
                             } else {
                                 console.log('🔍 PRICE DEBUG - Keeping dot as decimal point');
                             }
-                            // Otherwise keep dot as decimal (for prices like "9.99" from international sites)
                         }
 
                         console.log('🔍 PRICE DEBUG - Clean price before parseFloat:', cleanPrice);
