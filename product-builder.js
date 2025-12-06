@@ -632,6 +632,10 @@ HAM ÜRÜN ADI: ${originalTitle}`;
             return showToast('Select a price first', 'error');
         }
 
+        // Save compare_at_price
+        const comparePrice = document.getElementById('pb-compare-price')?.value;
+        productBuilder.compareAtPrice = comparePrice && parseFloat(comparePrice) > 0 ? parseFloat(comparePrice) : null;
+
         productBuilder.step = 6;
         this.renderReview();
     },
@@ -654,6 +658,7 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                     <h4 style="margin:0 0 10px 0; font-size:14px;">Product Information</h4>
                     <p style="margin:0 0 5px 0;"><strong>Title:</strong> ${productBuilder.aiTitle}</p>
                     <p style="margin:0 0 5px 0;"><strong>Price:</strong> ${productBuilder.finalPrice.toLocaleString('tr-TR')} TL</p>
+                    ${productBuilder.compareAtPrice ? `<p style="margin:0 0 5px 0;"><strong>Compare At Price:</strong> <span style="text-decoration:line-through;">${productBuilder.compareAtPrice.toLocaleString('tr-TR')} TL</span></p>` : ''}
                     <p style="margin:0; font-size:13px;"><strong>Description:</strong><br>${productBuilder.aiDescription}</p>
                 </div>
                 
@@ -825,7 +830,6 @@ HAM ÜRÜN ADI: ${originalTitle}`;
             }
 
             // Get optional fields
-            const compareAtPrice = parseFloat(document.getElementById('pb-compare-price')?.value);
             const tagsInput = document.getElementById('pb-tags')?.value.trim();
             const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean).join(', ') : '';
 
@@ -843,7 +847,7 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                     variants: wpData.sizes.map(s => ({
                         sku: `PFT-${wpData.productCode}-${s.size}`,
                         price: productBuilder.finalPrice.toFixed(2),
-                        compare_at_price: compareAtPrice && !isNaN(compareAtPrice) ? compareAtPrice.toFixed(2) : null,
+                        compare_at_price: productBuilder.compareAtPrice ? productBuilder.compareAtPrice.toFixed(2) : null,
                         inventory_quantity: s.stock,
                         inventory_management: 'shopify',
                         inventory_policy: 'deny',
