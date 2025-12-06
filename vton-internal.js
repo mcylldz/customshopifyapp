@@ -40,7 +40,7 @@ Focus STRICTLY on these attributes:
         body: JSON.stringify({
             action: 'openai_vision',
             payload: {
-                model: 'chatgpt-4o-latest',
+                model: 'gpt-4o',
                 messages: [
                     {
                         role: 'user',
@@ -100,7 +100,7 @@ Focus STRICTLY on these attributes:
         body: JSON.stringify({
             action: 'openai_vision',
             payload: {
-                model: 'chatgpt-4o-latest',
+                model: 'gpt-4o',
                 messages: [
                     {
                         role: 'user',
