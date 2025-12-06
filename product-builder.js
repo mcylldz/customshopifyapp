@@ -583,6 +583,12 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                     <input type="number" id="pb-custom-price" placeholder="Enter price..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
                 </div>
                 
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:500;">Compare At Price (optional):</label>
+                    <input type="number" id="pb-compare-price" placeholder="Original price for comparison (e.g., 2000)" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                    <p style="margin:5px 0 0 0; font-size:12px; color:#666;">Shows as strikethrough price in Shopify (leave empty if not needed)</p>
+                </div>
+                
                 <div id="pb-final-price" style="background:#28a745; color:white; padding:20px; border-radius:8px; text-align:center; margin-bottom:20px; display:none;">
                     <div style="font-size:14px; opacity:0.9; margin-bottom:5px;">Final Price:</div>
                     <div style="font-size:32px; font-weight:700;" id="pb-price-display"></div>
@@ -690,6 +696,13 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                             `).join('')}
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- Tags -->
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:500;">Product Tags (optional):</label>
+                    <input type="text" id="pb-tags" placeholder="e.g., winter, knitwear, casual (comma-separated)" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                    <p style="margin:5px 0 0 0; font-size:12px; color:#666;">Separate multiple tags with commas. Used for Shopify collections and search.</p>
                 </div>
                 
                 <button class="success" onclick="productBuilderApp.publishToShopify()" id="pb-publish-btn" style="width:100%; padding:15px; font-size:16px;">
@@ -811,6 +824,11 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                 throw new Error('Select at least one image');
             }
 
+            // Get optional fields
+            const compareAtPrice = parseFloat(document.getElementById('pb-compare-price')?.value);
+            const tagsInput = document.getElementById('pb-tags')?.value.trim();
+            const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean).join(', ') : '';
+
             // Create product payload
             const payload = {
                 action: 'create_product',
@@ -825,6 +843,7 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                     variants: wpData.sizes.map(s => ({
                         sku: `PFT-${wpData.productCode}-${s.size}`,
                         price: productBuilder.finalPrice.toFixed(2),
+                        compare_at_price: compareAtPrice && !isNaN(compareAtPrice) ? compareAtPrice.toFixed(2) : null,
                         inventory_quantity: s.stock,
                         inventory_management: 'shopify',
                         inventory_policy: 'deny',
@@ -833,6 +852,12 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                     options: [{ name: 'Size', values: wpData.sizes.map(s => s.size) }]
                 }
             };
+
+            // Add tags if provided
+            if (tags) {
+                payload.product.tags = tags;
+            }
+
 
             console.log('🔍 CLIENT DEBUG - Payload being sent to proxy:');
             console.log(JSON.stringify(payload, null, 2));
