@@ -40,12 +40,21 @@ window.API_CONFIG = {
     },
 
     BRAND: {
-        API_KEY: '',
-        ORGANIZATION_ID: '',
-        MODEL: 'gpt-4o'
+        API_KEY: localConfig.BRAND?.API_KEY || localConfig.OPENAI?.API_KEY || '',
+        ORGANIZATION_ID: localConfig.BRAND?.ORGANIZATION_ID || '',
+        MODEL: 'gpt-4o',
+        MODELS: {
+            SEO_OPTIMIZATION: 'gpt-4o',
+            PRODUCT_DESCRIPTION: 'gpt-4o-mini',
+            IMAGE_ANALYSIS: 'gpt-4o'
+        }
     }
 };
 
+// Set global API_BASE_URL
+window.API_BASE_URL = isNetlify ? '/.netlify/functions/proxy' : 'http://localhost:3001';
+
 // Log environment
 console.log('🌍 Environment:', isNetlify ? 'Netlify' : 'Local');
+console.log('🔗 API URL:', window.API_BASE_URL);
 console.log('📋 API_CONFIG loaded');

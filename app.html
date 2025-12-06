@@ -586,19 +586,10 @@
 
     <!-- Import Product Builder -->
     <script src="product-builder.js"></script>
-
-    <!-- Import Google Sheets Logger -->
     <script src="google-sheets-logger.js"></script>
 
     <script>
-        // Environment Detection
-        const isNetlify = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        const API_BASE_URL = isNetlify ? '/.netlify/functions/proxy' : 'http://localhost:3001';
-
-        console.log('🌍 Environment:', isNetlify ? 'Netlify' : 'Local');
-        console.log('🔗 API URL:', API_BASE_URL);
-
-        // Use API_CONFIG from config.js if available, otherwise use defaults
+        // CONFIG now loaded from runtime-config.js (which wraps config.js in local mode)
         const CONFIG = typeof API_CONFIG !== 'undefined' ? {
             // N8N Webhooks
             VTON_SUBMIT: API_CONFIG.N8N.WEBHOOKS.VTON_SUBMIT,
