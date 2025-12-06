@@ -39,7 +39,7 @@ Product Category: ${garmentCategory}
         body: JSON.stringify({
             action: 'openai_vision',
             payload: {
-                model: 'gpt-4o', // Hardcoded for debugging
+                model: 'gpt-4o-latest',
                 messages: [
                     {
                         role: 'user',
