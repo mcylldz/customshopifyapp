@@ -53,13 +53,21 @@ exports.handler = async (event, context) => {
         }
 
         if (action === 'create_product') {
-            if (!store_domain || !access_token) {
-                return errorResponse(400, 'Missing store credentials');
+            const domain = store_domain || process.env.SHOPIFY_STORE_DOMAIN;
+            const token = access_token || process.env.SHOPIFY_ACCESS_TOKEN;
+
+            if (!domain || !token) {
+                return errorResponse(400, 'Missing store credentials (server-side env vars not set)');
             }
-            return await createProduct(store_domain, access_token, data.product);
+            return await createProduct(domain, token, data.product);
+        }
+
+        if (action === 'google_sheets_log') {
+            return await proxyGoogleSheetsLog(data.row_data);
         }
 
         if (action === 'get_images') {
+
             if (!store_domain || !access_token || !product_id) {
                 return errorResponse(400, 'Missing required fields');
             }
@@ -243,22 +251,59 @@ async function proxyFALStatus(data) {
             }
         };
 
+        resolve({
+            statusCode: response.statusCode,
+            headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+            body: responseData
+        });
+    });
+});
+
+req.on('error', (error) => {
+    resolve(errorResponse(500, error.message));
+});
+
+req.end();
+    });
+}
+
+// Google Sheets Proxy
+async function proxyGoogleSheetsLog(rowData) {
+    return new Promise((resolve) => {
+        const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
+        if (!webhookUrl) {
+            resolve(errorResponse(500, 'Google Sheets Webhook URL not configured in environment'));
+            return;
+        }
+
+        const payload = JSON.stringify({ data: rowData });
+        const parsedUrl = new URL(webhookUrl);
+
+        const options = {
+            hostname: parsedUrl.hostname,
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload)
+            }
+        };
+
         const req = https.request(options, (response) => {
-            let responseData = '';
-            response.on('data', chunk => responseData += chunk);
-            response.on('end', () => {
-                resolve({
-                    statusCode: response.statusCode,
-                    headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-                    body: responseData
-                });
+            // Google Apps Script usually returns 302 or 200 with opaque response
+            resolve({
+                statusCode: 200,
+                headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ success: true, message: 'Logged to Sheets' })
             });
         });
 
         req.on('error', (error) => {
+            console.error('Google Sheets Error:', error);
             resolve(errorResponse(500, error.message));
         });
 
+        req.write(payload);
         req.end();
     });
 }
