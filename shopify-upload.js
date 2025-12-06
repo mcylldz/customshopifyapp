@@ -18,7 +18,7 @@ const SHOPIFY_API = {
 };
 
 /**
- * Upload image to Shopify product via N8N webhook
+ * Upload image to Shopify product via proxy
  * @param {string} productId - Shopify product ID  
  * @param {string} imageUrl - URL of image to upload
  * @param {number} position - Position in product images (1-10)
@@ -28,17 +28,13 @@ const SHOPIFY_API = {
 async function uploadToShopify(productId, imageUrl, position, replaceMode = false, oldImageId = null) {
     console.log('🔍 Upload called with:', { productId, imageUrl, position, replaceMode, oldImageId });
 
-    if (!SHOPIFY_API.STORE_DOMAIN || !SHOPIFY_API.ACCESS_TOKEN) {
-        throw new Error('Shopify credentials not configured in config.js');
-    }
-
     try {
         showToast('Uploading to Shopify...', 'success');
 
-        // Use N8N webhook to avoid CORS
+        // Use proxy endpoint for Netlify compatibility
         const payload = {
-            store_domain: SHOPIFY_API.STORE_DOMAIN,
-            access_token: SHOPIFY_API.ACCESS_TOKEN,
+            store_domain: SHOPIFY_API.STORE_DOMAIN || '',
+            access_token: SHOPIFY_API.ACCESS_TOKEN || '',
             product_id: productId,
             image_url: imageUrl,
             position: position,
@@ -46,10 +42,11 @@ async function uploadToShopify(productId, imageUrl, position, replaceMode = fals
             old_image_id: oldImageId
         };
 
-        console.log('📤 Sending to proxy:', SHOPIFY_API.UPLOAD_WEBHOOK);
+        const proxyUrl = SHOPIFY_API.getProxyUrl();
+        console.log('📤 Sending to proxy:', proxyUrl);
         console.log('📦 Payload:', payload);
 
-        const response = await fetch(SHOPIFY_API.UPLOAD_WEBHOOK, {
+        const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -84,22 +81,19 @@ async function uploadToShopify(productId, imageUrl, position, replaceMode = fals
 }
 
 /**
- * Get product images via N8N webhook
+ * Get product images via proxy
  */
 async function getProductImages(productId) {
-    if (!SHOPIFY_API.STORE_DOMAIN || !SHOPIFY_API.ACCESS_TOKEN) {
-        throw new Error('Shopify credentials not configured');
-    }
-
     try {
         const payload = {
-            store_domain: SHOPIFY_API.STORE_DOMAIN,
-            access_token: SHOPIFY_API.ACCESS_TOKEN,
+            store_domain: SHOPIFY_API.STORE_DOMAIN || '',
+            access_token: SHOPIFY_API.ACCESS_TOKEN || '',
             product_id: productId,
             action: 'get_images'
         };
 
-        const response = await fetch(SHOPIFY_API.UPLOAD_WEBHOOK, {
+        const proxyUrl = SHOPIFY_API.getProxyUrl();
+        const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
