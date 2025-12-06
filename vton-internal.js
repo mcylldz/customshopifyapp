@@ -217,7 +217,7 @@ async function checkVTONStatus(requestId) {
         },
         body: JSON.stringify({
             action: 'fal_status',
-            path: `/ fal - ai / nano - banana - pro / requests / ${requestId}/status`
+            path: `/fal-ai/nano-banana-pro/requests/${requestId}/status`
         })
     });
 
