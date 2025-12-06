@@ -233,6 +233,7 @@ async function proxyFALSubmit(data) {
 }
 
 // FAL AI Status Check Proxy  
+// FAL AI Status Check Proxy  
 async function proxyFALStatus(data) {
     return new Promise((resolve) => {
         const apiKey = process.env.FAL_AI_KEY;
@@ -247,23 +248,28 @@ async function proxyFALStatus(data) {
             path: data.path, // e.g., '/fal-ai/nano-banana-pro/requests/REQUEST_ID/status'
             method: 'GET',
             headers: {
-                'Authorization': `KEY ${apiKey}`
+                'Authorization': `KEY ${apiKey}`,
+                'Content-Type': 'application/json'
             }
         };
 
-        resolve({
-            statusCode: response.statusCode,
-            headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-            body: responseData
+        const req = https.request(options, (response) => {
+            let responseData = '';
+            response.on('data', chunk => responseData += chunk);
+            response.on('end', () => {
+                resolve({
+                    statusCode: response.statusCode,
+                    headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+                    body: responseData
+                });
+            });
         });
-    });
-});
 
-req.on('error', (error) => {
-    resolve(errorResponse(500, error.message));
-});
+        req.on('error', (error) => {
+            resolve(errorResponse(500, error.message));
+        });
 
-req.end();
+        req.end();
     });
 }
 
