@@ -67,23 +67,28 @@ exports.handler = async (event, context) => {
         }
 
         if (action === 'get_images') {
+            const domain = store_domain || process.env.SHOPIFY_STORE_DOMAIN;
+            const token = access_token || process.env.SHOPIFY_ACCESS_TOKEN;
 
-            if (!store_domain || !access_token || !product_id) {
-                return errorResponse(400, 'Missing required fields');
+            if (!domain || !token || !product_id) {
+                return errorResponse(400, 'Missing required fields for get_images');
             }
-            return await getProductImages(store_domain, access_token, product_id);
+            return await getProductImages(domain, token, product_id);
         }
 
         // Default: image upload
-        if (!store_domain || !access_token || !product_id) {
-            return errorResponse(400, 'Missing required fields');
+        const domain = store_domain || process.env.SHOPIFY_STORE_DOMAIN;
+        const token = access_token || process.env.SHOPIFY_ACCESS_TOKEN;
+
+        if (!domain || !token || !product_id) {
+            return errorResponse(400, 'Missing required fields for image upload');
         }
 
         if (replace_mode && old_image_id) {
-            await deleteImage(store_domain, access_token, product_id, old_image_id);
+            await deleteImage(domain, token, product_id, old_image_id);
         }
 
-        return await uploadImage(store_domain, access_token, product_id, image_url, position);
+        return await uploadImage(domain, token, product_id, image_url, position);
 
     } catch (error) {
         console.error('❌ Error:', error.message);
