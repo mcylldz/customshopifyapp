@@ -28,7 +28,7 @@ window.API_CONFIG = {
     },
 
     FAL_AI: {
-        API_KEY: isNetlify ? '' : (typeof API_CONFIG !== 'undefined' ? API_CONFIG.FAL_AI.API_KEY : ''),
+        API_KEY: localConfig.FAL_AI?.API_KEY || '',
         MODELS: {
             VTON: 'fal-ai/nano-banana-pro',
             IMAGE_GEN: 'fal-ai/flux-pro'
@@ -36,7 +36,7 @@ window.API_CONFIG = {
     },
 
     GOOGLE_SHEETS: {
-        WEBHOOK_URL: isNetlify ? '' : (typeof API_CONFIG !== 'undefined' ? API_CONFIG.GOOGLE_SHEETS.WEBHOOK_URL : '')
+        WEBHOOK_URL: localConfig.GOOGLE_SHEETS?.WEBHOOK_URL || ''
     },
 
     BRAND: {
