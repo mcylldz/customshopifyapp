@@ -810,6 +810,11 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                 }
             };
 
+            console.log('🔍 CLIENT DEBUG - Payload being sent to proxy:');
+            console.log(JSON.stringify(payload, null, 2));
+            console.log('🔍 CLIENT DEBUG - Image URLs:', selectedImages);
+            console.log('🔍 CLIENT DEBUG - WP Data:', wpData);
+
             // Send to proxy
             const response = await fetch(API_BASE_URL, {
                 method: 'POST',
@@ -817,11 +822,15 @@ HAM ÜRÜN ADI: ${originalTitle}`;
                 body: JSON.stringify(payload)
             });
 
+            console.log('🔍 CLIENT DEBUG - Response status:', response.status);
+            const responseText = await response.text();
+            console.log('🔍 CLIENT DEBUG - Response body:', responseText);
+
             if (!response.ok) {
-                throw new Error(`Publish failed: ${response.status}`);
+                throw new Error(`Publish failed: ${response.status} - ${responseText}`);
             }
 
-            const result = await response.json();
+            const result = JSON.parse(responseText);
 
             // Log to Google Sheets
             await this.logToGoogleSheets(result);
@@ -838,6 +847,7 @@ HAM ÜRÜN ADI: ${originalTitle}`;
             showToast('✅ Product published to Shopify!');
 
         } catch (e) {
+            console.error('❌ CLIENT ERROR:', e);
             showToast('Publish failed: ' + e.message, 'error');
             document.getElementById('pb-publish-result').innerHTML = `
                 <div style="background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; padding:15px; border-radius:8px;">

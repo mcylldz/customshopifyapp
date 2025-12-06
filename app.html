@@ -1167,7 +1167,7 @@
                     // Parse Turkish price format (e.g., "1.119 TL" = 1119, "1.119,50 TL" = 1119.50)
                     if (price !== 'N/A') {
                         // Remove currency symbols and whitespace
-                        let cleanPrice = price.replace(/[^\d.,]/g, '').trim();
+                        let cleanPrice = typeof price === 'string' ? price.replace(/[^\d.,]/g, '').trim() : price.toString();
 
                         // Turkish format: dots are thousand separators, commas are decimal separators
                         // Check if there's a comma (decimal separator)
@@ -1240,7 +1240,7 @@
                     productBuilder.wpData = {
                         productCode,
                         title,
-                        price: parseFloat(price.replace(',', '.')),
+                        price: typeof price === 'number' ? price : parseFloat(price.replace(',', '.')),
                         images,
                         sizes,
                         originalUrl: url

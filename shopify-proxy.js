@@ -340,8 +340,14 @@ function proxyOpenAI(data, res) {
 
 function createProduct(domain, token, productData, res) {
     console.log('🆕 Creating product:', productData.title);
+    console.log('🔍 DEBUG - Full productData received:');
+    console.log(JSON.stringify(productData, null, 2));
 
     const payload = JSON.stringify({ product: productData });
+
+    console.log('🔍 DEBUG - Payload size:', Buffer.byteLength(payload), 'bytes');
+    console.log('🔍 DEBUG - Full payload being sent to Shopify:');
+    console.log(payload);
 
     const options = {
         hostname: domain,
@@ -354,13 +360,20 @@ function createProduct(domain, token, productData, res) {
         }
     };
 
+    console.log('🔍 DEBUG - Request options:');
+    console.log('  URL: https://' + domain + options.path);
+    console.log('  Method:', options.method);
+    console.log('  Headers:', JSON.stringify(options.headers, null, 2));
+
     const req = https.request(options, (response) => {
         console.log('📨 Shopify create product response:', response.statusCode);
+        console.log('🔍 DEBUG - Response headers:', JSON.stringify(response.headers, null, 2));
 
         let data = '';
         response.on('data', chunk => data += chunk);
         response.on('end', () => {
-            console.log('📄 Shopify response:', data.substring(0, 300));
+            console.log('📄 Shopify FULL response:');
+            console.log(data);
 
             if (response.statusCode >= 200 && response.statusCode < 300) {
                 const result = JSON.parse(data);
@@ -376,6 +389,7 @@ function createProduct(domain, token, productData, res) {
                 console.log('✅ Product created successfully! ID:', productId);
             } else {
                 console.log('❌ Product creation failed:', response.statusCode);
+                console.log('❌ ERROR DETAILS:', data);
                 res.writeHead(response.statusCode, { 'Content-Type': 'application/json' });
                 res.end(data);
             }
@@ -384,12 +398,14 @@ function createProduct(domain, token, productData, res) {
 
     req.on('error', (error) => {
         console.log('❌ Product creation error:', error.message);
+        console.log('❌ Full error:', error);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: error.message }));
     });
 
     req.write(payload);
     req.end();
+    console.log('📤 Request sent to Shopify API');
 }
 
 server.listen(PORT, () => {
