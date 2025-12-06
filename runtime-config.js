@@ -24,7 +24,10 @@ window.API_CONFIG = {
     },
 
     OPENAI: {
-        API_KEY: localConfig.OPENAI?.API_KEY || localConfig.BRAND?.API_KEY || ''
+        API_KEY: localConfig.OPENAI?.API_KEY || localConfig.BRAND?.API_KEY || '',
+        MODELS: {
+            IMAGE_ANALYSIS: localConfig.BRAND?.MODELS?.IMAGE_ANALYSIS || localConfig.OPENAI?.MODELS?.IMAGE_ANALYSIS || 'gpt-4o'
+        }
     },
 
     FAL_AI: {

@@ -9,8 +9,8 @@
 const VTON_API = {
     FAL_BASE: "https://queue.fal.run/fal-ai/nano-banana-pro",
     FAL_KEY: typeof API_CONFIG !== 'undefined' ? API_CONFIG.FAL_AI.API_KEY : '',
-    OPENAI_KEY: typeof API_CONFIG !== 'undefined' ? API_CONFIG.OPENAI.API_KEY : '',
-    OPENAI_MODEL: typeof API_CONFIG !== 'undefined' ? API_CONFIG.OPENAI.MODELS.IMAGE_ANALYSIS : 'gpt-4o'
+    OPENAI_KEY: typeof API_CONFIG !== 'undefined' ? (API_CONFIG.OPENAI?.API_KEY || API_CONFIG.BRAND?.API_KEY) : '',
+    OPENAI_MODEL: typeof API_CONFIG !== 'undefined' ? (API_CONFIG.BRAND?.MODELS?.IMAGE_ANALYSIS || 'gpt-4o') : 'gpt-4o'
 };
 
 /**

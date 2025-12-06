@@ -156,6 +156,9 @@ async function pollGhostResult(requestId, maxAttempts = 120) {
 
 // Add to window.VTON exports
 if (typeof window !== 'undefined') {
+    if (!window.VTON) {
+        window.VTON = {};
+    }
     window.VTON.processGhostMode = processGhostMode;
     window.VTON.pollGhostResult = pollGhostResult;
 }
