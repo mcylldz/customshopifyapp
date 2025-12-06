@@ -60,7 +60,14 @@ Focus STRICTLY on these attributes:
     }
 
     const data = await response.json();
-    return data.choices[0].message.content.trim();
+    const content = data.choices[0].message.content.trim();
+
+    // Check for OpenAI content policy rejection
+    if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
+        throw new Error('OpenAI rejected this image due to content policy. Try a different model image.');
+    }
+
+    return content;
 }
 
 /**
@@ -113,7 +120,14 @@ Focus STRICTLY on these attributes:
     }
 
     const data = await response.json();
-    return data.choices[0].message.content.trim();
+    const content = data.choices[0].message.content.trim();
+
+    // Check for OpenAI content policy rejection
+    if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
+        throw new Error('OpenAI rejected this image due to content policy. Try a different garment image.');
+    }
+
+    return content;
 }
 
 /**

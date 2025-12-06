@@ -9,17 +9,9 @@
  */
 async function processSizeChartMode(sizeChartImageUrl) {
     try {
-        // Logo URL - hosted locally or use a CDN URL
-        const logoUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='; // Placeholder, will be replaced
+        const prompt = `Create a clean, minimalist and premium black-and-white size chart visual for a women's fashion e-commerce website. Use the provided size chart image and replace all text with fully Turkish content. Do NOT include any product code, model code, or fabric code in the visual. Preserve the same measurement categories but redesign the layout in a more modern, balanced and high-end style. The composition must include: a refined table with clear borders, evenly spaced columns for S-M, L-XL and 2XL-3XL, and neatly aligned measurement rows labeled "Boy", "Göğüs", "Bel", "Etek Ucu", "Kol Boyu". On the right side, include a simplified female silhouette with numbered measurement indicators (1–5) corresponding to the table rows. All numbers and labels must appear in Turkish. Use only black, white and grey tones. No color allowed. The overall look must be consistent across all generations: minimalist, editorial, monochrome, high-legibility typography, perfectly aligned layout, no decorative elements, no gradients, no shadows. Output must ALWAYS follow this exact layout structure and must NEVER include product codes or any additional information.`;
 
-        const prompt = `Create a clean, minimalist and premium black-and-white size chart visual for a women's fashion e-commerce website. Use the provided size chart image and replace all text with fully Turkish content. Do NOT include any product code, model code, or fabric code in the visual. Preserve the same measurement categories but redesign the layout in a more modern, balanced and high-end style. The composition must include: a refined table with clear borders, evenly spaced columns for S-M, L-XL and 2XL-3XL, and neatly aligned measurement rows labeled "Boy", "Göğüs", "Bel", "Etek Ucu", "Kol Boyu". On the right side, include a simplified female silhouette with numbered measurement indicators (1–5) corresponding to the table rows. All numbers and labels must appear in Turkish. Use only black, white and grey tones. No color allowed. Place the "Atelier Paftalı" logo from the second image at the bottom center in a clean, balanced, unobtrusive way. The overall look must be consistent across all generations: minimalist, editorial, monochrome, high-legibility typography, perfectly aligned layout, no decorative elements, no gradients, no shadows. Output must ALWAYS follow this exact layout structure and must NEVER include product codes or any additional information.`;
-
-        showToast('Creating Turkish size chart with logo...', 'success');
-
-        // Get logo from config or use hosted version
-        const finalLogoUrl = typeof API_CONFIG !== 'undefined' && API_CONFIG.BRAND?.LOGO_URL
-            ? API_CONFIG.BRAND.LOGO_URL
-            : 'https://i.imgur.com/yourlogo.png'; // Replace with actual hosted logo URL
+        showToast('Creating Turkish size chart...', 'success');
 
         // Submit to FAL AI through proxy
         const response = await fetch(window.API_BASE_URL, {
