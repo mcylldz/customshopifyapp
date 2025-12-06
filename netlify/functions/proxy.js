@@ -332,11 +332,53 @@ async function createProduct(domain, token, productData) {
             path: '/admin/api/2024-01/products.json',
             method: 'POST',
             headers: {
-                resolve(errorResponse(500, error.message));
-});
+                'X-Shopify-Access-Token': token,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload)
+            }
+        };
 
-req.write(payload);
-req.end();
+        const req = https.request(options, (response) => {
+            let data = '';
+            response.on('data', chunk => data += chunk);
+            response.on('end', () => {
+                console.log('Shopify Response Status:', response.statusCode);
+                console.log('Shopify Response Body:', data);
+
+                if (response.statusCode === 201) {
+                    const result = JSON.parse(data);
+                    resolve({
+                        statusCode: 201,
+                        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            success: true,
+                            product_id: result.product.id,
+                            product_url: `https://${domain}/admin/products/${result.product.id}`
+                        })
+                    });
+                } else {
+                    // Return detailed error for debugging
+                    console.error('Shopify API Error:', response.statusCode, data);
+                    resolve({
+                        statusCode: response.statusCode,
+                        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            error: true,
+                            statusCode: response.statusCode,
+                            message: data,
+                            payload: productData // Include payload for debugging
+                        })
+                    });
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            resolve(errorResponse(500, error.message));
+        });
+
+        req.write(payload);
+        req.end();
     });
 }
 
