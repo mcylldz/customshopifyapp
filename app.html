@@ -1164,6 +1164,37 @@
 
                     price = price || 'N/A';
 
+                    // Parse Turkish price format (e.g., "1.119 TL" = 1119, "1.119,50 TL" = 1119.50)
+                    if (price !== 'N/A') {
+                        // Remove currency symbols and whitespace
+                        let cleanPrice = price.replace(/[^\d.,]/g, '').trim();
+
+                        // Turkish format: dots are thousand separators, commas are decimal separators
+                        // Check if there's a comma (decimal separator)
+                        if (cleanPrice.includes(',') && cleanPrice.includes('.')) {
+                            // Format: "1.119,50" -> remove dots, replace comma with dot
+                            cleanPrice = cleanPrice.replace(/\./g, '').replace(',', '.');
+                        } else if (cleanPrice.includes(',')) {
+                            // Format: "119,50" -> just replace comma with dot
+                            cleanPrice = cleanPrice.replace(',', '.');
+                        } else if (cleanPrice.includes('.')) {
+                            // Ambiguous: could be "1.119" (thousand) or "1.99" (decimal)
+                            // Check position of dot
+                            const parts = cleanPrice.split('.');
+                            if (parts.length === 2 && parts[1].length === 3 && parts[0].length <= 3) {
+                                // Likely thousand separator: "1.119"
+                                cleanPrice = cleanPrice.replace('.', '');
+                            } else if (parts.length > 2) {
+                                // Multiple dots = thousand separators: "12.345.678"
+                                cleanPrice = cleanPrice.replace(/\./g, '');
+                            }
+                            // Otherwise assume decimal point (for prices like "9.99")
+                        }
+
+                        price = parseFloat(cleanPrice);
+                        console.log('Parsed price:', price);
+                    }
+
                     // Extract images using multiple methods
                     let images = [];
 

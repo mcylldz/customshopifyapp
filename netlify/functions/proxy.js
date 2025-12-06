@@ -318,55 +318,25 @@ async function proxyGoogleSheetsLog(rowData) {
 // Shopify Product Creation
 async function createProduct(domain, token, productData) {
     return new Promise((resolve) => {
-        // Use environment variables if not provided
-        const shopifyDomain = domain || process.env.SHOPIFY_STORE_B_DOMAIN;
-        const shopifyToken = token || process.env.SHOPIFY_STORE_B_TOKEN;
-
-        if (!shopifyDomain || !shopifyToken) {
-            resolve(errorResponse(500, 'Shopify credentials not configured'));
-            return;
-        }
-
         const payload = JSON.stringify({ product: productData });
 
+        console.log('=== Shopify Create Product Debug ===');
+        console.log('Domain:', domain);
+        console.log('Payload size:', payload.length, 'bytes');
+        console.log('Product title:', productData.title);
+        console.log('Variants count:', productData.variants?.length);
+        console.log('Images count:', productData.images?.length);
+
         const options = {
-            hostname: shopifyDomain,
+            hostname: domain,
             path: '/admin/api/2024-01/products.json',
             method: 'POST',
             headers: {
-                'X-Shopify-Access-Token': shopifyToken,
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(payload)
-            }
-        };
+                resolve(errorResponse(500, error.message));
+});
 
-        const req = https.request(options, (response) => {
-            let data = '';
-            response.on('data', chunk => data += chunk);
-            response.on('end', () => {
-                if (response.statusCode >= 200 && response.statusCode < 300) {
-                    const result = JSON.parse(data);
-                    resolve(successResponse({
-                        success: true,
-                        product_id: result.product.id,
-                        product_url: `https://${domain}/admin/products/${result.product.id}`
-                    }));
-                } else {
-                    resolve({
-                        statusCode: response.statusCode,
-                        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-                        body: data
-                    });
-                }
-            });
-        });
-
-        req.on('error', (error) => {
-            resolve(errorResponse(500, error.message));
-        });
-
-        req.write(payload);
-        req.end();
+req.write(payload);
+req.end();
     });
 }
 
