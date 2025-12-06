@@ -40,7 +40,7 @@ Focus STRICTLY on these attributes:
         body: JSON.stringify({
             action: 'openai_vision',
             payload: {
-                model: VTON_API.OPENAI_MODEL,
+                model: 'gpt-4o', // Hardcoded for debugging
                 messages: [
                     {
                         role: 'user',
@@ -93,7 +93,7 @@ Focus STRICTLY on these attributes:
         body: JSON.stringify({
             action: 'openai_vision',
             payload: {
-                model: VTON_API.OPENAI_MODEL,
+                model: 'gpt-4o', // Hardcoded for debugging
                 messages: [
                     {
                         role: 'user',
