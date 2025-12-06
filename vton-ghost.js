@@ -30,24 +30,27 @@ Product Category: ${garmentCategory}
 - **DO NOT** use introductory phrases like "The image shows...".
 - **OUTPUT FORMAT:** A single, concise, comma-separated string of descriptive keywords.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Route through Netlify proxy for secure API key management
+    const response = await fetch(window.API_BASE_URL, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${VTON_API.OPENAI_KEY}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: VTON_API.OPENAI_MODEL,
-            messages: [
-                {
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: prompt },
-                        { type: 'image_url', image_url: { url: garmentImageUrl } }
-                    ]
-                }
-            ],
-            max_tokens: 500
+            action: 'openai_vision',
+            payload: {
+                model: VTON_API.OPENAI_MODEL,
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: prompt },
+                            { type: 'image_url', image_url: { url: garmentImageUrl } }
+                        ]
+                    }
+                ],
+                max_tokens: 500
+            }
         })
     });
 
