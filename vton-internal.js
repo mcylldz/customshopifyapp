@@ -137,17 +137,20 @@ async function submitVTONJob(modelImageUrl, garmentImageUrl, modelDescription, g
 - Product Name: ${productTitle}
 - Product Type: ${garmentCategory}`;
 
-    const response = await fetch(`${VTON_API.FAL_BASE}/edit`, {
+    // Route through Netlify proxy for secure API key management
+    const response = await fetch(window.API_BASE_URL, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `KEY ${VTON_API.FAL_KEY}`
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            image_urls: [modelImageUrl, garmentImageUrl],
-            prompt: prompt,
-            resolution: "2K",
-            aspect_ratio: "9:16"
+            action: 'fal_submit',
+            payload: {
+                image_urls: [modelImageUrl, garmentImageUrl],
+                prompt: prompt,
+                resolution: "2K",
+                aspect_ratio: "9:16"
+            }
         })
     });
 
@@ -168,10 +171,16 @@ async function submitVTONJob(modelImageUrl, garmentImageUrl, modelDescription, g
  * Replicates: "Check Fal Status" node from fal2
  */
 async function checkVTONStatus(requestId) {
-    const statusResponse = await fetch(`${VTON_API.FAL_BASE}/requests/${requestId}/status`, {
+    // Route through Netlify proxy for secure API key management
+    const statusResponse = await fetch(window.API_BASE_URL, {
+        method: 'POST',
         headers: {
-            'Authorization': `KEY ${VTON_API.FAL_KEY}`
-        }
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            action: 'fal_status',
+            path: `/fal-ai/nano-banana-pro/requests/${requestId}/status`
+        })
     });
 
     if (!statusResponse.ok) {
@@ -182,10 +191,16 @@ async function checkVTONStatus(requestId) {
 
     // If completed, fetch the final result
     if (statusData.status === 'COMPLETED') {
-        const resultResponse = await fetch(`${VTON_API.FAL_BASE}/requests/${requestId}`, {
+        // Fetch final result through proxy
+        const resultResponse = await fetch(window.API_BASE_URL, {
+            method: 'POST',
             headers: {
-                'Authorization': `KEY ${VTON_API.FAL_KEY}`
-            }
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'fal_status',
+                path: `/fal-ai/nano-banana-pro/requests/${requestId}`
+            })
         });
 
         if (!resultResponse.ok) {

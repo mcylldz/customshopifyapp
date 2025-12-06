@@ -21,18 +21,20 @@ async function processSizeChartMode(sizeChartImageUrl) {
             ? API_CONFIG.BRAND.LOGO_URL
             : 'https://i.imgur.com/yourlogo.png'; // Replace with actual hosted logo URL
 
-        // Submit to FAL AI with both images
-        const response = await fetch(`${VTON_API.FAL_BASE}/edit`, {
+        // Submit to FAL AI through proxy
+        const response = await fetch(window.API_BASE_URL, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `KEY ${VTON_API.FAL_KEY}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                image_urls: [sizeChartImageUrl], // Only size chart for now, logo in prompt
-                prompt: prompt,
-                aspect_ratio: "9:16",
-                resolution: "2K"
+                action: 'fal_submit',
+                payload: {
+                    image_urls: [sizeChartImageUrl],
+                    prompt: prompt,
+                    aspect_ratio: "9:16",
+                    resolution: "2K"
+                }
             })
         });
 
@@ -65,8 +67,15 @@ async function pollSizeChartResult(requestId, maxAttempts = 120) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 5000));
 
-        const statusRes = await fetch(`${VTON_API.FAL_BASE}/requests/${requestId}/status`, {
-            headers: { 'Authorization': `KEY ${VTON_API.FAL_KEY}` }
+        const statusRes = await fetch(window.API_BASE_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'fal_status',
+                path: `/fal-ai/nano-banana-pro/requests/${requestId}/status`
+            })
         });
 
         if (!statusRes.ok) {
@@ -76,8 +85,15 @@ async function pollSizeChartResult(requestId, maxAttempts = 120) {
         const statusData = await statusRes.json();
 
         if (statusData.status === 'COMPLETED') {
-            const resultRes = await fetch(`${VTON_API.FAL_BASE}/requests/${requestId}`, {
-                headers: { 'Authorization': `KEY ${VTON_API.FAL_KEY}` }
+            const resultRes = await fetch(window.API_BASE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'fal_status',
+                    path: `/fal-ai/nano-banana-pro/requests/${requestId}`
+                })
             });
 
             if (!resultRes.ok) {

@@ -44,6 +44,14 @@ exports.handler = async (event, context) => {
             return await proxyOpenAI(data);
         }
 
+        if (action === 'fal_submit') {
+            return await proxyFALSubmit(data);
+        }
+
+        if (action === 'fal_status') {
+            return await proxyFALStatus(data);
+        }
+
         if (action === 'create_product') {
             if (!store_domain || !access_token) {
                 return errorResponse(400, 'Missing store credentials');
@@ -171,6 +179,90 @@ async function proxyOpenAI(data) {
         req.end();
     });
 }
+
+// FAL AI Submit Job Proxy
+async function proxyFALSubmit(data) {
+    return new Promise((resolve) => {
+        const apiKey = process.env.FAL_AI_KEY;
+
+        if (!apiKey) {
+            resolve(errorResponse(500, 'FAL AI key not configured in environment'));
+            return;
+        }
+
+        const payload = JSON.stringify(data.payload);
+
+        const options = {
+            hostname: 'queue.fal.run',
+            path: '/fal-ai/nano-banana-pro/edit',
+            method: 'POST',
+            headers: {
+                'Authorization': `KEY ${apiKey}`,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload)
+            }
+        };
+
+        const req = https.request(options, (response) => {
+            let responseData = '';
+            response.on('data', chunk => responseData += chunk);
+            response.on('end', () => {
+                resolve({
+                    statusCode: response.statusCode,
+                    headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+                    body: responseData
+                });
+            });
+        });
+
+        req.on('error', (error) => {
+            resolve(errorResponse(500, error.message));
+        });
+
+        req.write(payload);
+        req.end();
+    });
+}
+
+// FAL AI Status Check Proxy  
+async function proxyFALStatus(data) {
+    return new Promise((resolve) => {
+        const apiKey = process.env.FAL_AI_KEY;
+
+        if (!apiKey) {
+            resolve(errorResponse(500, 'FAL AI key not configured in environment'));
+            return;
+        }
+
+        const options = {
+            hostname: 'queue.fal.run',
+            path: data.path, // e.g., '/fal-ai/nano-banana-pro/requests/REQUEST_ID/status'
+            method: 'GET',
+            headers: {
+                'Authorization': `KEY ${apiKey}`
+            }
+        };
+
+        const req = https.request(options, (response) => {
+            let responseData = '';
+            response.on('data', chunk => responseData += chunk);
+            response.on('end', () => {
+                resolve({
+                    statusCode: response.statusCode,
+                    headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+                    body: responseData
+                });
+            });
+        });
+
+        req.on('error', (error) => {
+            resolve(errorResponse(500, error.message));
+        });
+
+        req.end();
+    });
+}
+
 
 // Shopify Product Creation
 async function createProduct(domain, token, productData) {
