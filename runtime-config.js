@@ -48,13 +48,31 @@ window.API_CONFIG = {
             PRODUCT_DESCRIPTION: 'gpt-4o-mini',
             IMAGE_ANALYSIS: 'gpt-4o'
         }
-    }
-};
+    
+    N8N: {
+            BASE_URL: localConfig.N8N?.BASE_URL || '',
+            WEBHOOKS: {
+                VTON_SUBMIT: localConfig.N8N?.WEBHOOKS?.VTON_SUBMIT || '',
+                VTON_STATUS: localConfig.N8N?.WEBHOOKS?.VTON_STATUS || '',
+                VTON_GHOST: localConfig.N8N?.WEBHOOKS?.VTON_GHOST || '',
+                REPLACE_IMAGE: localConfig.N8N?.WEBHOOKS?.REPLACE_IMAGE || '',
+                SEO_GET_PRODUCTS: localConfig.N8N?.WEBHOOKS?.SEO_GET_PRODUCTS || '',
+                SEO_PROCESS: localConfig.N8N?.WEBHOOKS?.SEO_PROCESS || ''
+            }
+        },
 
-// Set global API_BASE_URL
-window.API_BASE_URL = isNetlify ? '/.netlify/functions/proxy' : 'http://localhost:3001';
+        SETTINGS: {
+            CORS_PROXY: localConfig.SETTINGS?.CORS_PROXY || '',
+            CONCURRENCY_LIMIT: localConfig.SETTINGS?.CONCURRENCY_LIMIT || 20,
+            TIMEOUT: localConfig.SETTINGS?.TIMEOUT || 30000,
+            DEBUG: localConfig.SETTINGS?.DEBUG || false
+        }
+    };
 
-// Log environment
-console.log('🌍 Environment:', isNetlify ? 'Netlify' : 'Local');
-console.log('🔗 API URL:', window.API_BASE_URL);
-console.log('📋 API_CONFIG loaded');
+    // Set global API_BASE_URL
+    window.API_BASE_URL = isNetlify ? '/.netlify/functions/proxy' : 'http://localhost:3001';
+
+    // Log environment
+    console.log('🌍 Environment:', isNetlify ? 'Netlify' : 'Local');
+    console.log('🔗 API URL:', window.API_BASE_URL);
+    console.log('📋 API_CONFIG loaded');
