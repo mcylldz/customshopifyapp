@@ -31,43 +31,55 @@ Product Category: ${garmentCategory}
 - **OUTPUT FORMAT:** A single, concise, comma-separated string of descriptive keywords.`;
 
     // Route through Netlify proxy for secure API key management
-    const response = await fetch(window.API_BASE_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            action: 'openai_vision',
-            payload: {
-                model: 'gpt-4-turbo',
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: prompt },
-                            { type: 'image_url', image_url: { url: garmentImageUrl } }
-                        ]
+    const models = ['chatgpt-4o-latest', 'gpt-4o', 'gpt-4-turbo'];
+    let lastError = null;
+
+    for (const model of models) {
+        console.log(`Trying OpenAI model: ${model} for Ghost Mode Analysis...`);
+        try {
+            const response = await fetch(window.API_BASE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'openai_vision',
+                    payload: {
+                        model: model,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: [
+                                    { type: 'text', text: prompt },
+                                    { type: 'image_url', image_url: { url: garmentImageUrl } }
+                                ]
+                            }
+                        ],
+                        max_tokens: 500
                     }
-                ],
-                max_tokens: 500
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errText}`);
             }
-        })
-    });
 
-    if (!response.ok) {
-        throw new Error(`OpenAI Ghost Analysis failed: ${response.status}`);
+            const data = await response.json();
+            const content = data.choices[0].message.content.trim();
+
+            if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
+                throw new Error('Content Policy Rejection');
+            }
+
+            console.log(`✅ Success with model: ${model}`);
+            return content;
+        } catch (error) {
+            console.warn(`❌ Model ${model} failed:`, error.message);
+            lastError = error;
+        }
     }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-
-    // Check for OpenAI content policy rejection
-    if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
-        console.warn('OpenAI rejected garment image (Ghost Mode). Using fallback description.');
-        return "A high-quality fashion garment, flat lay photography, neutral background."; // Fallback
-    }
-
-    return content.trim();
+    console.warn('All models failed. Using fallback description.');
+    return "A high-quality fashion garment, flat lay photography, neutral background.";
 }
 
 /**

@@ -21,54 +21,64 @@ async function analyzeModelImage(modelImageUrl) {
     const prompt = `Analyze the person in this image to create a detailed physical description for an AI image generator (Flux/SDXL).
 
 Focus STRICTLY on these attributes:
-1. **Physical Identity:** Gender, ethnicity, skin tone, approximate age, face shape, and specific body type (e.g., slim, athletic, curvy).
-2. **Hair:** Exact color, length, texture (wavy, straight), and style.
-3. **Pose & Posture:** Describe the exact pose (e.g., standing facing forward, hands on hips, ¾ turn to right). Specify head angle and gaze direction.
-4. **Hands:** If hands are visible, describe their position accurately.
+    const prompt = `Describe this fashion model image for an AI image generator.Focus on:
+    1. The model's pose, gender, and visible physical traits.
+    2. The clothing they are currently wearing(to be replaced).
+3. The lighting, background, and camera angle.
+Output a concise, descriptive prompt.`;
 
-**CRITICAL CONSTRAINTS:**
-- **DO NOT** describe the clothing they are currently wearing. Ignore the outfit completely.
-- **DO NOT** include introductory phrases like "Here is the description".
-- Output **ONLY** a concise, comma-separated descriptive string.`;
+    const models = ['chatgpt-4o-latest', 'gpt-4o', 'gpt-4-turbo'];
+    let lastError = null;
 
-    // Route through Netlify proxy for secure API key management
-    const response = await fetch(window.API_BASE_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            action: 'openai_vision',
-            payload: {
-                model: 'gpt-4-turbo',
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: prompt },
-                            { type: 'image_url', image_url: { url: modelImageUrl } }
-                        ]
+    for (const model of models) {
+        console.log(`Trying OpenAI model: ${ model } for Model Analysis...`);
+        try {
+            const response = await fetch(window.API_BASE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'openai_vision',
+                    payload: {
+                        model: model,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: [
+                                    { type: 'text', text: prompt },
+                                    { type: 'image_url', image_url: { url: modelImageUrl } }
+                                ]
+                            }
+                        ],
+                        max_tokens: 500
                     }
-                ],
-                max_tokens: 500
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP ${ response.status }: ${ errText } `);
             }
-        })
-    });
 
-    if (!response.ok) {
-        throw new Error(`OpenAI Model Analysis failed: ${response.status}`);
+            const data = await response.json();
+            const content = data.choices[0].message.content.trim();
+
+            // Check content policy
+            if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
+                throw new Error('Content Policy Rejection');
+            }
+
+            console.log(`✅ Success with model: ${ model } `);
+            return content;
+
+        } catch (error) {
+            console.warn(`❌ Model ${ model } failed: `, error.message);
+            lastError = error;
+            // Continue to next model...
+        }
     }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content.trim();
-
-    // Check for OpenAI content policy rejection
-    if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
-        console.warn('OpenAI rejected model image. Using fallback description.');
-        return "A professional fashion model posing in a studio, neutral lighting, high quality."; // Fallback
-    }
-
-    return content;
+    console.warn('All models failed. Using fallback description.');
+    return "A professional fashion model posing in a studio, neutral lighting, high quality.";
 }
 
 /**
@@ -76,60 +86,73 @@ Focus STRICTLY on these attributes:
  * Replicates: "Garment_Analiz" node from fal1
  */
 async function analyzeGarmentImage(garmentImageUrl, fabricInfo = '') {
-    const fabricHint = fabricInfo ? `\n\n**USER PROVIDED FABRIC INFO:** ${fabricInfo} - Use this information to enhance your material and texture description.` : '';
+    const fabricHint = fabricInfo ? `\n\n ** USER PROVIDED FABRIC INFO:** ${ fabricInfo } - Use this information to enhance your material and texture description.` : '';
 
-    const prompt = `Act as a technical fashion designer. Analyze this garment image to create a high-fidelity prompt description for an AI image generator (Flux/SDXL).
+    const prompt = `Act as a technical fashion designer.Analyze this garment image to create a high - fidelity prompt description for an AI image generator(Flux / SDXL).
 
 Focus STRICTLY on these attributes:
-1. **Garment Type & Fit:** Exact category (e.g., cropped hoodie, maxi dress), silhouette (oversized, tailored, flowy), and cut.
-2. **Fabric & Texture:** Specific material properties (e.g., chunky cable knit, sheer chiffon, rigid denim), surface finish (matte, satin, distressed), and fabric weight.
-3. **Neckline & Sleeves:** Specific styles (crew neck, off-shoulder, puff sleeves, raglan, cuffs).
-4. **Design Details:** Prints, patterns, embroidery, buttons, zippers, pockets, and seam placements.
-5. **Color:** Precise color names (e.g., "crimson red" instead of "red").${fabricHint}
+    1. ** Garment Type & Fit:** Exact category(e.g., cropped hoodie, maxi dress), silhouette(oversized, tailored, flowy), and cut.
+2. ** Fabric & Texture:** Specific material properties(e.g., chunky cable knit, sheer chiffon, rigid denim), surface finish(matte, satin, distressed), and fabric weight.
+3. ** Neckline & Sleeves:** Specific styles(crew neck, off - shoulder, puff sleeves, raglan, cuffs).
+4. ** Design Details:** Prints, patterns, embroidery, buttons, zippers, pockets, and seam placements.
+5. ** Color:** Precise color names(e.g., "crimson red" instead of "red").${ fabricHint }
 
-**CRITICAL CONSTRAINTS:**
-- **DO NOT** describe the background, hanger, or the mannequin wearing it.
-- **DO NOT** include introductory phrases like "Here is the description".
-- **OUTPUT ONLY** a concise, comma-separated descriptive string ready for use in an image prompt.`;
+** CRITICAL CONSTRAINTS:**
+- ** DO NOT ** describe the background, hanger, or the mannequin wearing it.
+- ** DO NOT ** include introductory phrases like "Here is the description".
+- ** OUTPUT ONLY ** a concise, comma - separated descriptive string ready for use in an image prompt.`;
 
     // Route through Netlify proxy for secure API key management
-    const response = await fetch(window.API_BASE_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            action: 'openai_vision',
-            payload: {
-                model: 'gpt-4-turbo',
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: prompt },
-                            { type: 'image_url', image_url: { url: garmentImageUrl } }
-                        ]
+    const models = ['chatgpt-4o-latest', 'gpt-4o', 'gpt-4-turbo'];
+    let lastError = null;
+
+    for (const model of models) {
+        console.log(`Trying OpenAI model: ${ model } for Garment Analysis...`);
+        try {
+            const response = await fetch(window.API_BASE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'openai_vision',
+                    payload: {
+                        model: model,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: [
+                                    { type: 'text', text: prompt },
+                                    { type: 'image_url', image_url: { url: garmentImageUrl } }
+                                ]
+                            }
+                        ],
+                        max_tokens: 500
                     }
-                ],
-                max_tokens: 500
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP ${ response.status }: ${ errText } `);
             }
-        })
-    });
 
-    if (!response.ok) {
-        throw new Error(`OpenAI Garment Analysis failed: ${response.status}`);
+            const data = await response.json();
+            const content = data.choices[0].message.content.trim();
+
+            if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
+                throw new Error('Content Policy Rejection');
+            }
+
+            console.log(`✅ Success with model: ${ model } `);
+            return content;
+        } catch (error) {
+            console.warn(`❌ Model ${ model } failed: `, error.message);
+            lastError = error;
+        }
     }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content.trim();
+    console.warn('All models failed. Using fallback description.');
+    return "A high-quality fashion garment, detailed fabric texture, professional product photography.";
 
-    // Check for OpenAI content policy rejection
-    if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
-        console.warn('OpenAI rejected garment image. Using fallback description.');
-        return "A high-quality fashion garment, detailed fabric texture, professional product photography."; // Fallback
-    }
-
-    return content;
 }
 
 /**
@@ -137,21 +160,21 @@ Focus STRICTLY on these attributes:
  * Replicates: "Fal Create Job" node from fal1
  */
 async function submitVTONJob(modelImageUrl, garmentImageUrl, modelDescription, garmentDescription, productTitle, garmentCategory) {
-    const prompt = `Professional editorial fashion photography. The exact same model from image 1 wearing a ${garmentDescription}. The model description: ${modelDescription}. 
+    const prompt = `Professional editorial fashion photography.The exact same model from image 1 wearing a ${ garmentDescription }. The model description: ${ modelDescription }. 
 
-**IDENTITY & FACE:**
-- Maintain exact facial features, bone structure, and expression of the model in image 1.Keep the angle, background, and environment exactly as shown in image 1.
-- Do not alter face shape, eye color, or skin texture.
+** IDENTITY & FACE:**
+        - Maintain exact facial features, bone structure, and expression of the model in image 1.Keep the angle, background, and environment exactly as shown in image 1.
+            - Do not alter face shape, eye color, or skin texture.
 
-**TECHNICAL REQUIREMENTS:**
-- The garment fits perfectly with realistic fabric physics, natural folds, and heavy draping.
-- High-fidelity texture rendering, studio lighting, 8k resolution, sharp focus.
+** TECHNICAL REQUIREMENTS:**
+        - The garment fits perfectly with realistic fabric physics, natural folds, and heavy draping.
+- High - fidelity texture rendering, studio lighting, 8k resolution, sharp focus.
 - Masterpiece quality, photorealistic, volumetric lighting.
 - Accurate body proportions, realistic hands, natural pose.
 
-**CONTEXT:**
-- Product Name: ${productTitle}
-- Product Type: ${garmentCategory}`;
+** CONTEXT:**
+        - Product Name: ${ productTitle }
+    - Product Type: ${ garmentCategory } `;
 
     // Route through Netlify proxy for secure API key management
     const response = await fetch(window.API_BASE_URL, {
@@ -171,7 +194,7 @@ async function submitVTONJob(modelImageUrl, garmentImageUrl, modelDescription, g
     });
 
     if (!response.ok) {
-        throw new Error(`FAL AI submission failed: ${response.status}`);
+        throw new Error(`FAL AI submission failed: ${ response.status } `);
     }
 
     const data = await response.json();
@@ -195,47 +218,47 @@ async function checkVTONStatus(requestId) {
         },
         body: JSON.stringify({
             action: 'fal_status',
-            path: `/fal-ai/nano-banana-pro/requests/${requestId}/status`
+            path: `/ fal - ai / nano - banana - pro / requests / ${ requestId }/status`
+})
+    });
+
+if (!statusResponse.ok) {
+    throw new Error(`Status check failed: ${statusResponse.status}`);
+}
+
+const statusData = await statusResponse.json();
+
+// If completed, fetch the final result
+if (statusData.status === 'COMPLETED') {
+    // Fetch final result through proxy
+    const resultResponse = await fetch(window.API_BASE_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            action: 'fal_status',
+            path: `/fal-ai/nano-banana-pro/requests/${requestId}`
         })
     });
 
-    if (!statusResponse.ok) {
-        throw new Error(`Status check failed: ${statusResponse.status}`);
+    if (!resultResponse.ok) {
+        throw new Error(`Result fetch failed: ${resultResponse.status}`);
     }
 
-    const statusData = await statusResponse.json();
+    const resultData = await resultResponse.json();
 
-    // If completed, fetch the final result
-    if (statusData.status === 'COMPLETED') {
-        // Fetch final result through proxy
-        const resultResponse = await fetch(window.API_BASE_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                action: 'fal_status',
-                path: `/fal-ai/nano-banana-pro/requests/${requestId}`
-            })
-        });
-
-        if (!resultResponse.ok) {
-            throw new Error(`Result fetch failed: ${resultResponse.status}`);
-        }
-
-        const resultData = await resultResponse.json();
-
-        return {
-            status: 'COMPLETED',
-            output_image: resultData.images[0].url
-        };
-    }
-
-    // Still processing
     return {
-        status: statusData.status,
-        output_image: null
+        status: 'COMPLETED',
+        output_image: resultData.images[0].url
     };
+}
+
+// Still processing
+return {
+    status: statusData.status,
+    output_image: null
+};
 }
 
 /**
