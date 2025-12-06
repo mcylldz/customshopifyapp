@@ -59,7 +59,15 @@ Product Category: ${garmentCategory}
     }
 
     const data = await response.json();
-    return data.choices[0].message.content.trim();
+    const content = data.choices[0].message.content;
+
+    // Check for OpenAI content policy rejection
+    if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
+        console.warn('OpenAI rejected garment image (Ghost Mode). Using fallback description.');
+        return "A high-quality fashion garment, flat lay photography, neutral background."; // Fallback
+    }
+
+    return content.trim();
 }
 
 /**

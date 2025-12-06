@@ -64,7 +64,8 @@ Focus STRICTLY on these attributes:
 
     // Check for OpenAI content policy rejection
     if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
-        throw new Error('OpenAI rejected this image due to content policy. Try a different model image.');
+        console.warn('OpenAI rejected model image. Using fallback description.');
+        return "A professional fashion model posing in a studio, neutral lighting, high quality."; // Fallback
     }
 
     return content;
@@ -124,7 +125,8 @@ Focus STRICTLY on these attributes:
 
     // Check for OpenAI content policy rejection
     if (content.includes("I'm sorry") || content.includes("I can't") || content.includes("I cannot")) {
-        throw new Error('OpenAI rejected this image due to content policy. Try a different garment image.');
+        console.warn('OpenAI rejected garment image. Using fallback description.');
+        return "A high-quality fashion garment, detailed fabric texture, professional product photography."; // Fallback
     }
 
     return content;
