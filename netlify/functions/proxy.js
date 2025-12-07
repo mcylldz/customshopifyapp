@@ -37,7 +37,16 @@ exports.handler = async (event, context) => {
 
         // Route to appropriate handler
         if (action === 'wp_scrape') {
-            return await scrapeWordPress(wp_url);
+            console.log('🔍 WP URL:', wp_url);
+            try {
+                const result = await scrapeWordPress(wp_url);
+                console.log('✅ WP scrape completed, status:', result.statusCode);
+                return result;
+            } catch (error) {
+                console.error('❌ WP scrape failed:', error);
+                console.error('❌ Error stack:', error.stack);
+                return errorResponse(500, 'WP scrape failed: ' + error.message);
+            }
         }
 
         if (action === 'openai_vision') {
@@ -125,35 +134,60 @@ function successResponse(data) {
 
 // WordPress Scraping
 async function scrapeWordPress(wpUrl) {
-    return new Promise((resolve) => {
-        const urlObj = new URL(wpUrl);
-        const options = {
-            hostname: urlObj.hostname,
-            path: urlObj.pathname + urlObj.search,
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        };
+    console.log('🌐 Scraping WordPress:', wpUrl);
 
-        const protocol = urlObj.protocol === 'https:' ? https : http;
-        const req = protocol.request(options, (response) => {
-            let data = '';
-            response.on('data', chunk => data += chunk);
-            response.on('end', () => {
-                resolve({
-                    statusCode: response.statusCode,
-                    headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'text/html' },
-                    body: data
+    return new Promise((resolve, reject) => {
+        try {
+            const urlObj = new URL(wpUrl);
+            console.log('📍 Hostname:', urlObj.hostname, 'Path:', urlObj.pathname);
+
+            const options = {
+                hostname: urlObj.hostname,
+                path: urlObj.pathname + urlObj.search,
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            };
+
+            const protocol = urlObj.protocol === 'https:' ? https : http;
+            const req = protocol.request(options, (response) => {
+                console.log('📨 WP response status:', response.statusCode);
+
+                let data = '';
+                response.on('data', chunk => data += chunk);
+                response.on('end', () => {
+                    console.log('✅ WP data received, size:', data.length, 'bytes');
+                    resolve({
+                        statusCode: 200,
+                        headers: {
+                            'Access-Control-Allow-Origin': '*',
+                            'Content-Type': 'text/html',
+                            'Cache-Control': 'no-cache'
+                        },
+                        body: data
+                    });
                 });
             });
-        });
 
-        req.on('error', (error) => {
-            resolve(errorResponse(500, error.message));
-        });
+            req.on('error', (error) => {
+                console.error('❌ WP request error:', error.message);
+                console.error('❌ Error code:', error.code);
+                resolve(errorResponse(500, 'Request failed: ' + error.message));
+            });
 
-        req.end();
+            req.setTimeout(25000, () => {
+                console.error('❌ WP request timeout');
+                req.destroy();
+                resolve(errorResponse(504, 'Request timeout'));
+            });
+
+            req.end();
+        } catch (error) {
+            console.error('❌ scrapeWordPress exception:', error.message);
+            console.error('❌ Stack:', error.stack);
+            resolve(errorResponse(500, 'Scrape exception: ' + error.message));
+        }
     });
 }
 
