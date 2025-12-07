@@ -146,13 +146,26 @@ async function scrapeWordPress(wpUrl) {
                 path: urlObj.pathname + urlObj.search,
                 method: 'GET',
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+                },
+                timeout: 8000  // 8 second timeout (Netlify limit is 10s)
             };
 
-            const protocol = urlObj.protocol === 'https:' ? https : http;
+            const protocol = urlObj.protocol === 'https:' ? https : require('http');
             const req = protocol.request(options, (response) => {
                 console.log('📨 WP response status:', response.statusCode);
+
+                // Handle redirects
+                if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                    console.log('🔄 Redirecting to:', response.headers.location);
+                    // Recursive call for redirect
+                    scrapeWordPress(response.headers.location).then(resolve).catch(err => {
+                        resolve(errorResponse(500, 'Redirect failed: ' + err.message));
+                    });
+                    return;
+                }
 
                 let data = '';
                 response.on('data', chunk => data += chunk);
@@ -173,20 +186,20 @@ async function scrapeWordPress(wpUrl) {
             req.on('error', (error) => {
                 console.error('❌ WP request error:', error.message);
                 console.error('❌ Error code:', error.code);
-                resolve(errorResponse(500, 'Request failed: ' + error.message));
+                resolve(errorResponse(500, 'WP site unreachable: ' + error.message));
             });
 
-            req.setTimeout(25000, () => {
-                console.error('❌ WP request timeout');
+            req.on('timeout', () => {
+                console.error('❌ WP request timeout after 8s');
                 req.destroy();
-                resolve(errorResponse(504, 'Request timeout'));
+                resolve(errorResponse(504, 'WP site took too long to respond (>8s). Try again or use a different URL.'));
             });
 
             req.end();
         } catch (error) {
             console.error('❌ scrapeWordPress exception:', error.message);
             console.error('❌ Stack:', error.stack);
-            resolve(errorResponse(500, 'Scrape exception: ' + error.message));
+            resolve(errorResponse(500, 'Invalid URL: ' + error.message));
         }
     });
 }
