@@ -66,6 +66,15 @@ exports.handler = async (event, context) => {
             return await proxyGoogleSheetsLog(data.row_data);
         }
 
+        if (action === 'image_proxy') {
+            // Proxy images to bypass CORS for cropper
+            const { image_url } = data;
+            if (!image_url) {
+                return errorResponse(400, 'Missing image_url for image_proxy');
+            }
+            return await proxyImage(image_url);
+        }
+
         if (action === 'get_images') {
             const domain = store_domain || process.env.SHOPIFY_STORE_DOMAIN;
             const token = access_token || process.env.SHOPIFY_ACCESS_TOKEN;
@@ -511,6 +520,62 @@ async function deleteImage(domain, token, productId, imageId) {
         });
 
         req.on('error', () => resolve()); // Continue anyway
+        req.end();
+    });
+}
+
+// Proxy Image (for CORS bypass in cropper)
+async function proxyImage(imageUrl) {
+    return new Promise((resolve) => {
+        console.log('🖼️ Proxying image:', imageUrl);
+
+        const urlObj = new URL(imageUrl);
+        const options = {
+            hostname: urlObj.hostname,
+            path: urlObj.pathname + urlObj.search,
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0'
+            }
+        };
+
+        const protocol = urlObj.protocol === 'https:' ? https : require('http');
+
+        const req = protocol.request(options, (response) => {
+            if (response.statusCode !== 200) {
+                console.error('❌ Image proxy failed:', response.statusCode);
+                resolve(errorResponse(response.statusCode, 'Failed to fetch image'));
+                return;
+            }
+
+            const chunks = [];
+            response.on('data', chunk => chunks.push(chunk));
+            response.on('end', () => {
+                const buffer = Buffer.concat(chunks);
+                const contentType = response.headers['content-type'] || 'image/jpeg';
+
+                console.log('✅ Image proxied successfully, size:', buffer.length, 'bytes');
+
+                resolve({
+                    statusCode: 200,
+                    headers: {
+                        'Content-Type': contentType,
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type',
+                        'Cache-Control': 'public, max-age=31536000'
+                    },
+                    body: buffer.toString('base64'),
+                    isBase64Encoded: true
+                });
+            });
+        });
+
+        req.on('error', (error) => {
+            console.error('❌ Image proxy error:', error.message);
+            resolve(errorResponse(500, 'Failed to proxy image: ' + error.message));
+        });
+
         req.end();
     });
 }
