@@ -603,8 +603,9 @@
         const ImageCropper = {
             cropperInstance: null,
             callback: null,
+            blobUrl: null,
 
-            open(imageUrl, callback) {
+            async open(imageUrl, callback) {
                 console.log('🖼️ Opening cropper for:', imageUrl);
                 this.callback = callback;
 
@@ -618,45 +619,108 @@
                     this.cropperInstance = null;
                 }
 
+                // Revoke previous blob URL if exists
+                if (this.blobUrl) {
+                    URL.revokeObjectURL(this.blobUrl);
+                    this.blobUrl = null;
+                }
+
                 // Show modal FIRST (Cropper needs visible element)
                 modal.style.display = 'block';
 
                 // Reset image
                 img.src = '';
 
-                // Set image source and initialize after load
-                img.onload = () => {
-                    console.log('✅ Image loaded, initializing Cropper.js');
+                try {
+                    // Convert to blob to bypass CORS for cross-origin images
+                    console.log('🌐 Fetching image as blob to bypass CORS...');
+                    const blobUrl = await this.fetchImageAsBlob(imageUrl);
+                    this.blobUrl = blobUrl;
+
+                    console.log('✅ Blob URL created:', blobUrl.substring(0, 50) + '...');
+
+                    // Set image source and initialize after load
+                    img.onload = () => {
+                        console.log('✅ Image loaded, initializing Cropper.js');
+
+                        try {
+                            this.cropperInstance = new Cropper(img, {
+                                aspectRatio: NaN, // Free-form cropping
+                                viewMode: 1,
+                                autoCropArea: 0.8,
+                                responsive: true,
+                                background: false,
+                                guides: true,
+                                center: true,
+                                highlight: true,
+                                cropBoxMovable: true,
+                                cropBoxResizable: true,
+                                toggleDragModeOnDblclick: false,
+                            });
+                            console.log('✅ Cropper initialized successfully');
+                        } catch (error) {
+                            console.error('❌ Cropper initialization failed:', error);
+                            showToast('Failed to initialize cropper: ' + error.message, 'error');
+                            this.close();
+                        }
+                    };
+
+                    img.onerror = () => {
+                        console.error('❌ Failed to load blob image');
+                        showToast('Failed to load image', 'error');
+                        this.close();
+                    };
+
+                    // Set blob URL as source
+                    img.src = blobUrl;
+
+                } catch (error) {
+                    console.error('❌ Failed to fetch image:', error);
+                    showToast('Failed to load image: ' + error.message, 'error');
+                    this.close();
+                }
+            },
+
+            async fetchImageAsBlob(imageUrl) {
+                // Try to fetch directly first
+                try {
+                    const response = await fetch(imageUrl, {
+                        mode: 'cors',
+                        credentials: 'omit'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const blob = await response.blob();
+                    return URL.createObjectURL(blob);
+                } catch (directError) {
+                    console.warn('⚠️ Direct fetch failed (CORS), trying proxy...', directError.message);
+
+                    // If direct fetch fails due to CORS, try through proxy
+                    // Add timestamp to prevent caching
+                    const proxiedUrl = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 'timestamp=' + Date.now();
 
                     try {
-                        this.cropperInstance = new Cropper(img, {
-                            aspectRatio: NaN, // Free-form cropping
-                            viewMode: 1,
-                            autoCropArea: 0.8,
-                            responsive: true,
-                            background: false,
-                            guides: true,
-                            center: true,
-                            highlight: true,
-                            cropBoxMovable: true,
-                            cropBoxResizable: true,
-                            toggleDragModeOnDblclick: false,
+                        const response = await fetch(proxiedUrl, {
+                            mode: 'cors',
+                            credentials: 'omit'
                         });
-                        console.log('✅ Cropper initialized successfully');
-                    } catch (error) {
-                        console.error('❌ Cropper initialization failed:', error);
-                        showToast('Failed to initialize cropper: ' + error.message, 'error');
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+
+                        const blob = await response.blob();
+                        return URL.createObjectURL(blob);
+                    } catch (proxyError) {
+                        console.error('❌ Both direct and proxy fetch failed');
+                        // Last resort: return original URL (may still have CORS issues but worth trying)
+                        console.warn('⚠️ Returning original URL as fallback');
+                        return imageUrl;
                     }
-                };
-
-                img.onerror = () => {
-                    console.error('❌ Failed to load image:', imageUrl);
-                    showToast('Failed to load image', 'error');
-                    this.close();
-                };
-
-                // Set source AFTER setting up handlers
-                img.src = imageUrl;
+                }
             },
 
             crop() {
@@ -724,6 +788,11 @@
                 if (this.cropperInstance) {
                     this.cropperInstance.destroy();
                     this.cropperInstance = null;
+                }
+
+                if (this.blobUrl) {
+                    URL.revokeObjectURL(this.blobUrl);
+                    this.blobUrl = null;
                 }
 
                 this.callback = null;
