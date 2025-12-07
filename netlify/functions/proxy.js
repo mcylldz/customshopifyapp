@@ -582,13 +582,23 @@ async function proxyImage(imageUrl) {
             path: urlObj.pathname + urlObj.search,
             method: 'GET',
             headers: {
-                'User-Agent': 'Mozilla/5.0'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
         };
 
         const protocol = urlObj.protocol === 'https:' ? https : require('http');
 
         const req = protocol.request(options, (response) => {
+            // Handle redirects
+            if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                console.log('🔄 Image redirect to:', response.headers.location);
+                // Recursive call for redirect
+                proxyImage(response.headers.location).then(resolve).catch(err => {
+                    resolve(errorResponse(500, 'Image redirect failed: ' + err.message));
+                });
+                return;
+            }
+
             if (response.statusCode !== 200) {
                 console.error('❌ Image proxy failed:', response.statusCode);
                 resolve(errorResponse(response.statusCode, 'Failed to fetch image'));
