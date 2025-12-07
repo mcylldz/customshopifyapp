@@ -621,6 +621,7 @@
 
                 // Revoke previous blob URL if exists
                 if (this.blobUrl) {
+                    console.log('🗑️ Revoking previous blob URL');
                     URL.revokeObjectURL(this.blobUrl);
                     this.blobUrl = null;
                 }
@@ -628,8 +629,11 @@
                 // Show modal FIRST (Cropper needs visible element)
                 modal.style.display = 'block';
 
-                // Reset image
+                // CRITICAL: Properly reset image element
+                img.onload = null;
+                img.onerror = null;
                 img.src = '';
+                img.removeAttribute('src');
 
                 try {
                     // Convert to blob to bypass CORS for cross-origin images
@@ -639,7 +643,7 @@
 
                     console.log('✅ Blob URL created:', blobUrl.substring(0, 50) + '...');
 
-                    // Set image source and initialize after load
+                    // NOW set event handlers AFTER blob is ready
                     img.onload = () => {
                         console.log('✅ Image loaded, initializing Cropper.js');
 
@@ -665,13 +669,13 @@
                         }
                     };
 
-                    img.onerror = () => {
-                        console.error('❌ Failed to load blob image');
+                    img.onerror = (e) => {
+                        console.error('❌ Failed to load blob image', e);
                         showToast('Failed to load image', 'error');
                         this.close();
                     };
 
-                    // Set blob URL as source
+                    // Set blob URL as source AFTER handlers are set
                     img.src = blobUrl;
 
                 } catch (error) {
