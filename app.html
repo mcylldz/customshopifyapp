@@ -605,69 +605,115 @@
             callback: null,
 
             open(imageUrl, callback) {
+                console.log('🖼️ Opening cropper for:', imageUrl);
                 this.callback = callback;
 
                 const modal = document.getElementById('cropper-modal');
                 const img = document.getElementById('cropper-image');
 
-                // Set image source
-                img.src = imageUrl;
+                // Destroy previous instance if exists
+                if (this.cropperInstance) {
+                    console.log('🗑️ Destroying previous cropper instance');
+                    this.cropperInstance.destroy();
+                    this.cropperInstance = null;
+                }
 
-                // Show modal
+                // Show modal FIRST (Cropper needs visible element)
                 modal.style.display = 'block';
 
-                // Initialize Cropper.js after image loads
-                img.onload = () => {
-                    if (this.cropperInstance) {
-                        this.cropperInstance.destroy();
-                    }
+                // Reset image
+                img.src = '';
 
-                    this.cropperInstance = new Cropper(img, {
-                        aspectRatio: NaN, // Free-form cropping
-                        viewMode: 1,
-                        autoCropArea: 0.8,
-                        responsive: true,
-                        background: false,
-                        guides: true,
-                        center: true,
-                        highlight: true,
-                        cropBoxMovable: true,
-                        cropBoxResizable: true,
-                        toggleDragModeOnDblclick: false,
-                    });
+                // Set image source and initialize after load
+                img.onload = () => {
+                    console.log('✅ Image loaded, initializing Cropper.js');
+
+                    try {
+                        this.cropperInstance = new Cropper(img, {
+                            aspectRatio: NaN, // Free-form cropping
+                            viewMode: 1,
+                            autoCropArea: 0.8,
+                            responsive: true,
+                            background: false,
+                            guides: true,
+                            center: true,
+                            highlight: true,
+                            cropBoxMovable: true,
+                            cropBoxResizable: true,
+                            toggleDragModeOnDblclick: false,
+                        });
+                        console.log('✅ Cropper initialized successfully');
+                    } catch (error) {
+                        console.error('❌ Cropper initialization failed:', error);
+                        showToast('Failed to initialize cropper: ' + error.message, 'error');
+                    }
                 };
+
+                img.onerror = () => {
+                    console.error('❌ Failed to load image:', imageUrl);
+                    showToast('Failed to load image', 'error');
+                    this.close();
+                };
+
+                // Set source AFTER setting up handlers
+                img.src = imageUrl;
             },
 
             crop() {
-                if (!this.cropperInstance) return;
+                console.log('✂️ Crop button clicked');
 
-                // Get cropped canvas
-                const canvas = this.cropperInstance.getCroppedCanvas({
-                    maxWidth: 2048,
-                    maxHeight: 2048,
-                    imageSmoothingEnabled: true,
-                    imageSmoothingQuality: 'high'
-                });
+                if (!this.cropperInstance) {
+                    console.error('❌ No cropper instance available');
+                    showToast('Cropper not initialized', 'error');
+                    return;
+                }
 
-                // Convert to blob and then to data URL
-                canvas.toBlob((blob) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        const croppedDataUrl = reader.result;
+                try {
+                    // Get cropped canvas
+                    const canvas = this.cropperInstance.getCroppedCanvas({
+                        maxWidth: 2048,
+                        maxHeight: 2048,
+                        imageSmoothingEnabled: true,
+                        imageSmoothingQuality: 'high'
+                    });
 
-                        // Call callback with cropped image
-                        if (this.callback) {
-                            this.callback(croppedDataUrl);
+                    if (!canvas) {
+                        throw new Error('Failed to get cropped canvas');
+                    }
+
+                    console.log('📐 Canvas created:', canvas.width, 'x', canvas.height);
+
+                    // Convert to blob and then to data URL
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            console.error('❌ Failed to create blob');
+                            showToast('Failed to create cropped image', 'error');
+                            return;
                         }
 
-                        this.close();
-                        showToast('✂️ Image cropped successfully!', 'success');
-                    };
-                    reader.readAsDataURL(blob);
-                });
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const croppedDataUrl = reader.result;
+                            console.log('✅ Cropped image created, size:', Math.round(croppedDataUrl.length / 1024), 'KB');
+
+                            // Call callback with cropped image
+                            if (this.callback) {
+                                this.callback(croppedDataUrl);
+                            }
+
+                            this.close();
+                            showToast('✂️ Image cropped successfully!', 'success');
+                        };
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (error) {
+                    console.error('❌ Crop failed:', error);
+                    showToast('Crop failed: ' + error.message, 'error');
+                }
             },
 
             cancel() {
+                console.log('❌ Crop cancelled');
                 this.close();
             },
 
@@ -681,6 +727,7 @@
                 }
 
                 this.callback = null;
+                console.log('🔒 Cropper closed');
             }
         };
     </script>
