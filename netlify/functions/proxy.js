@@ -591,15 +591,13 @@ async function proxyImage(imageUrl) {
         const req = protocol.request(options, (response) => {
             // Handle redirects
             if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-                let redirectUrl = response.headers.location;
-
-                // Handle relative URLs
-                if (redirectUrl.startsWith('/')) {
-                    redirectUrl = `${urlObj.protocol}//${urlObj.hostname}${redirectUrl}`;
-                } else if (!redirectUrl.startsWith('http')) {
-                    // Handle relative paths without leading slash
-                    const basePath = urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1);
-                    redirectUrl = `${urlObj.protocol}//${urlObj.hostname}${basePath}${redirectUrl}`;
+                let redirectUrl;
+                try {
+                    // Robustly resolve redirect URL against current URL
+                    redirectUrl = new URL(response.headers.location, imageUrl).href;
+                } catch (e) {
+                    console.error('❌ Failed to construct redirect URL:', e);
+                    redirectUrl = response.headers.location; // Fallback (likely to fail if relative)
                 }
 
                 console.log('🔄 Image redirect from:', imageUrl);
