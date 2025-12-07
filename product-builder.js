@@ -152,12 +152,19 @@ const productBuilderApp = {
                         </div>
                     </div>
                     
-                    <!-- Garment Images (WP) -->
-                    <div>
-                        <h4 style="margin:0 0 10px 0; font-size:14px;">Garment Images (WP)</h4>
+                     <!-- Garment Images (WP) -->
+                     <div>
+                        <h4 style="margin:0 0 10px 0; font-size:14px;">Garment Images (WP) <span style="font-size:11px; color:#666;">✂️ Double-click to crop</span></h4>
                         <div id="pb-vton-garments" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; max-height:400px; overflow-y:auto;">
                             ${wpData.images.map((src, i) => `
-                                <img src="${src}" onclick="productBuilderApp.selectGarment('${src}')" style="width:100%; aspect-ratio:9/16; object-fit:cover; border-radius:6px; cursor:pointer; border:3px solid transparent;" data-url="${src}">
+                                <div style="position:relative;">
+                                    <img src="${src}" 
+                                         onclick="productBuilderApp.selectGarment('${src}')" 
+                                         ondblclick="productBuilderApp.openGarmentCropper(${i})"
+                                         style="width:100%; aspect-ratio:9/16; object-fit:cover; border-radius:6px; cursor:pointer; border:3px solid transparent;" 
+                                         data-url="${src}">
+                                    <div style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:white; padding:3px 6px; border-radius:4px; font-size:10px; pointer-events:none;">✂️</div>
+                                </div>
                             `).join('')}
                         </div>
                     </div>
@@ -234,6 +241,21 @@ const productBuilderApp = {
         });
 
         showToast(`✅ Pair added (${productBuilder.vtonPairs.length} total)`);
+    },
+
+    openGarmentCropper(imageIndex) {
+        const wpData = productBuilder.wpData;
+        if (!wpData || !wpData.images[imageIndex]) return;
+
+        ImageCropper.open(wpData.images[imageIndex], (croppedDataUrl) => {
+            // Replace original image with cropped version
+            wpData.images[imageIndex] = croppedDataUrl;
+
+            // Re-render VTON step to show cropped image
+            this.renderVTON();
+
+            console.log('✂️ WP garment image cropped:', imageIndex);
+        });
     },
 
     renderVTONPairs() {

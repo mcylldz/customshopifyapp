@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unified Shopify Manager</title>
+
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -563,11 +567,123 @@
         </div>
     </div>
 
+    <!-- Image Cropper Modal -->
+    <div id="cropper-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; padding:20px;">
+        <div style="max-width:900px; margin:0 auto; height:100%; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="color:white; margin:0;">Crop Garment Image</h2>
+                <button onclick="ImageCropper.cancel()"
+                    style="padding:10px 20px; background:#ff3b30; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">✕
+                    Cancel</button>
+            </div>
+            <div id="cropper-container"
+                style="flex:1; background:#000; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                <img id="cropper-image" style="max-width:100%; max-height:100%;">
+            </div>
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                <button onclick="ImageCropper.crop()"
+                    style="padding:12px 30px; background:#34c759; color:white; border:none; border-radius:6px; cursor:pointer; font-size:16px; font-weight:600;">✓
+                    Crop & Use</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Import API Configuration -->
     <script src="config.js"></script> <!-- Local only (gitignored) -->
     <script src="runtime-config.js"></script> <!-- Netlify-safe wrapper -->
+
+    <!-- Cropper.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+    <!-- Image Cropper Component -->
+    <script>
+        const ImageCropper = {
+            cropperInstance: null,
+            callback: null,
+
+            open(imageUrl, callback) {
+                this.callback = callback;
+
+                const modal = document.getElementById('cropper-modal');
+                const img = document.getElementById('cropper-image');
+
+                // Set image source
+                img.src = imageUrl;
+
+                // Show modal
+                modal.style.display = 'block';
+
+                // Initialize Cropper.js after image loads
+                img.onload = () => {
+                    if (this.cropperInstance) {
+                        this.cropperInstance.destroy();
+                    }
+
+                    this.cropperInstance = new Cropper(img, {
+                        aspectRatio: NaN, // Free-form cropping
+                        viewMode: 1,
+                        autoCropArea: 0.8,
+                        responsive: true,
+                        background: false,
+                        guides: true,
+                        center: true,
+                        highlight: true,
+                        cropBoxMovable: true,
+                        cropBoxResizable: true,
+                        toggleDragModeOnDblclick: false,
+                    });
+                };
+            },
+
+            crop() {
+                if (!this.cropperInstance) return;
+
+                // Get cropped canvas
+                const canvas = this.cropperInstance.getCroppedCanvas({
+                    maxWidth: 2048,
+                    maxHeight: 2048,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high'
+                });
+
+                // Convert to blob and then to data URL
+                canvas.toBlob((blob) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const croppedDataUrl = reader.result;
+
+                        // Call callback with cropped image
+                        if (this.callback) {
+                            this.callback(croppedDataUrl);
+                        }
+
+                        this.close();
+                        showToast('✂️ Image cropped successfully!', 'success');
+                    };
+                    reader.readAsDataURL(blob);
+                });
+            },
+
+            cancel() {
+                this.close();
+            },
+
+            close() {
+                const modal = document.getElementById('cropper-modal');
+                modal.style.display = 'none';
+
+                if (this.cropperInstance) {
+                    this.cropperInstance.destroy();
+                    this.cropperInstance = null;
+                }
+
+                this.callback = null;
+            }
+        };
+    </script>
 
     <!-- Import Internal VTON System -->
     <script src="vton-internal.js"></script>
@@ -699,9 +815,21 @@
             renderGrid(store) {
                 const data = store === 'A' ? this.storeA : this.storeB;
                 const grid = document.getElementById(`vton-grid-${store.toLowerCase()}`);
-                grid.innerHTML = data.images.map(img =>
-                    `<div class="img-item"><img src="${img.src}" loading="lazy"></div>`
-                ).join('');
+
+                if (store === 'B') {
+                    // Store B: Garment images - clickable for cropping
+                    grid.innerHTML = data.images.map((img, idx) => `
+                        <div class="img-item" style="position:relative; cursor:pointer;" onclick="vtonApp.openCropper(${idx})">
+                            <img src="${img.src}" loading="lazy">
+                            <div style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:white; padding:4px 8px; border-radius:4px; font-size:11px;">✂️ Click to crop</div>
+                        </div>
+                    `).join('');
+                } else {
+                    // Store A: Model images - no cropping needed
+                    grid.innerHTML = data.images.map(img =>
+                        `<div class="img-item"><img src="${img.src}" loading="lazy"></div>`
+                    ).join('');
+                }
             },
 
             updateDropdowns() {
@@ -712,6 +840,23 @@
                 };
                 populate('vton-sel-a', this.storeA.images);
                 populate('vton-sel-b', this.storeB.images);
+            },
+
+            openCropper(imageIndex) {
+                const img = this.storeB.images[imageIndex];
+                if (!img) return;
+
+                ImageCropper.open(img.src, (croppedDataUrl) => {
+                    // Replace original image with cropped version
+                    this.storeB.images[imageIndex].src = croppedDataUrl;
+                    this.storeB.images[imageIndex].cropped = true;
+
+                    // Re-render grid and dropdowns
+                    this.renderGrid('B');
+                    this.updateDropdowns();
+
+                    console.log('✂️ Garment image cropped:', imageIndex);
+                });
             },
 
             addPair() {
