@@ -682,28 +682,38 @@
             },
 
             async fetchImageAsBlob(imageUrl) {
-                // Try to fetch directly first
+                console.log('🌐 Fetching image through proxy:', imageUrl);
+
                 try {
-                    const response = await fetch(imageUrl, {
-                        mode: 'cors',
-                        credentials: 'omit'
+                    // Use Netlify proxy to bypass CORS
+                    const response = await fetch(API_BASE_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'image_proxy',
+                            image_url: imageUrl
+                        })
                     });
 
                     if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
+                        const errorText = await response.text();
+                        throw new Error(`Proxy returned ${response.status}: ${errorText}`);
                     }
 
+                    // Response is base64 encoded image, convert to blob
                     const blob = await response.blob();
-                    return URL.createObjectURL(blob);
-                } catch (directError) {
-                    console.warn('⚠️ Direct fetch failed (CORS), trying proxy...', directError.message);
+                    const blobUrl = URL.createObjectURL(blob);
 
-                    // If direct fetch fails due to CORS, try through proxy
-                    // Add timestamp to prevent caching
-                    const proxiedUrl = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 'timestamp=' + Date.now();
+                    console.log('✅ Image fetched through proxy, blob URL created');
+                    return blobUrl;
 
+                } catch (error) {
+                    console.error('❌ Proxy fetch failed:', error.message);
+
+                    // Fallback: try direct fetch (will likely fail with CORS but worth trying)
+                    console.warn('⚠️ Trying direct fetch as fallback...');
                     try {
-                        const response = await fetch(proxiedUrl, {
+                        const response = await fetch(imageUrl, {
                             mode: 'cors',
                             credentials: 'omit'
                         });
@@ -713,12 +723,12 @@
                         }
 
                         const blob = await response.blob();
-                        return URL.createObjectURL(blob);
-                    } catch (proxyError) {
-                        console.error('❌ Both direct and proxy fetch failed');
-                        // Last resort: return original URL (may still have CORS issues but worth trying)
-                        console.warn('⚠️ Returning original URL as fallback');
-                        return imageUrl;
+                        const fallbackUrl = URL.createObjectURL(blob);
+                        console.log('✅ Direct fetch succeeded as fallback');
+                        return fallbackUrl;
+                    } catch (fallbackError) {
+                        console.error('❌ Both proxy and direct fetch failed');
+                        throw new Error('Unable to load image. Please try again.');
                     }
                 }
             },
